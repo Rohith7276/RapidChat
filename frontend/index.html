@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Realtime Chat App with Secure Messaging and Fast Performance" />
+    <meta name="keywords" content="chat, realtime, messaging, secure chat, instant messaging" />
+    <meta name="author" content="Your Name" />
+
+    <!-- Favicon (Ensuring compatibility across browsers) -->
+    <link rel="icon" type="image/png" href="public/chattt.png" />
+    <!-- <link rel="icon" type="image/svg+xml" href="/vite.svg" /> -->
+
+    <!-- Prevent Search Engines from Indexing (Optional) -->
+    <!-- <meta name="robots" content="noindex, nofollow" /> -->
+
+    <title>RapidChat | Chat Instantly</title>
+
+    <style>
+      /* Prevent text selection and copying */
+      body, html {
+        user-select: none; 
+        -webkit-user-select: none; 
+        -moz-user-select: none; 
+        -ms-user-select: none;
+      }
+
+      /* Hide scrollbar for better UX */
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <!-- Main React App Entry -->
+    <script type="module" src="/src/main.jsx"></script>
+
+    <script>
+      // Disable right-click to prevent inspecting elements
+      // document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+      // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U to block dev tools
+      // document.addEventListener("keydown", (event) => {
+      //   if (
+      //     event.keyCode === 123 || // F12
+      //     (event.ctrlKey && event.shiftKey && event.keyCode === 73) || // Ctrl + Shift + I
+      //     (event.ctrlKey && event.shiftKey && event.keyCode === 74) || // Ctrl + Shift + J
+      //     (event.ctrlKey && event.keyCode === 85) // Ctrl + U
+      //   ) {
+      //     event.preventDefault();
+      //   }
+      // });
+    </script>
+  </body>
+</html>
