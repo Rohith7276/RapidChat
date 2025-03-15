@@ -12,8 +12,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@gsap/react": "^2.1.2",
-    "groq-sdk": "^0.15.0",
-    "gsap": "^3.12.7"
+    
   }
 }
