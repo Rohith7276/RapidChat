@@ -2,12 +2,14 @@ import { useChatStore } from "../store/useChatStore";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BrainCircuit } from 'lucide-react';
 import ChatHeader from "./ChatHeader";
+import { useInView } from "react-intersection-observer";
+
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { X } from "lucide-react";
-const ChatContainer = () => {
+const chatContainer = () => {
   const {
     messages,
     getMessages,
@@ -18,19 +20,29 @@ const ChatContainer = () => {
     isUserMessageLoading,
     unsubscribeFromMessages,
   } = useChatStore();
+  const { ref, inView } = useInView();
+  const [showLoading, setShowLoading] = useState(true)
   const { authUser } = useAuthStore();
   const containerRef = useRef(null);
+  const [page, setPage] = useState(1)
   const messageEndRef = useRef(null);
   const [flashDot, setFlashDot] = useState("");
-  const [imageViewSrc, setImageViewSrc] = useState("") 
-  useEffect(() => {
-    getMessages(selectedUser, 1);
+  const [message, setMessage] = useState([])
+  const [imageViewSrc, setImageViewSrc] = useState("")
+  const size = useRef(null)
+  useEffect(() => { 
+    if (inView){ 
+      setPage(page + 1) 
+    } 
+  }, [inView]);
 
+  useEffect(() => {
+    getMessages(selectedUser, page);
     if (selectedUser.name === undefined) subscribeToMessages();
     else subscribeToGroup();
     return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
- 
+  }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
+
 
   useEffect(() => {
     if (isUserMessageLoading) {
@@ -41,9 +53,30 @@ const ChatContainer = () => {
     }
   }, [isUserMessageLoading]);
 
+  //Infinite scroll
+  const prevScrollHeight = useRef(0)
+  const prevScrollTop = useRef(0)
+
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView();
+    prevScrollHeight.current = containerRef.current.scrollHeight;
+    prevScrollTop.current = containerRef.current.scrollTop;
+    setMessage(messages)
   }, [messages]);
+  
+  
+  useEffect(() => {
+    if(size.current === messages.length) setShowLoading(false)
+    else setShowLoading(true)
+    if ((prevScrollTop.current == 0 && size.current != messages.length)|| size.current == messages.length - 1) messageEndRef.current?.scrollIntoView();
+    else {
+      const newScrollHeight = chatContainer.scrollHeight;
+      chatContainer.scrollTop = prevScrollTop.current + (newScrollHeight - prevScrollHeight.current);
+    }
+    size.current = messages.length;
+
+  }, [message])
+
+
 
   const handleImageView = (e) => {
     const img = e.target.src;
@@ -57,8 +90,7 @@ const ChatContainer = () => {
         <MessageInput />
       </div>
     );
-  } 
-  
+  }
 
 
   return (
@@ -66,36 +98,50 @@ const ChatContainer = () => {
       <ChatHeader />
       {imageViewSrc !== "" && <div className=" ">
         <div className="absolute w-screen  h-[100vh] inset-0 bg-black bg-opacity-50 flex justify-center items-center" >
-          <img loading="blur"src={imageViewSrc} alt="attachment" className="z-20 max-w-[90%] max-h-[90%] object-contain" />
-          <button  className=" bg-[#ffffff14] hover:cursor-pointer hover:bg-black rounded-full p-[4px] z-20 -mt-[74vh] -ml-[2vw]" onClick={() => setImageViewSrc("")}>
+          <img loading="blur" src={imageViewSrc} alt="attachment" className="z-20 max-w-[90%] max-h-[90%] object-contain" />
+          <button className=" bg-[#ffffff14] hover:cursor-pointer hover:bg-black rounded-full p-[4px] z-20 -mt-[74vh] -ml-[2vw]" onClick={() => setImageViewSrc("")}>
             <X />
           </button>
         </div>
       </div>}
+
       <div className="flex-1  overflow-y-auto p-4 space-y-4"
         ref={containerRef}  >
-        {messages.map((message, index) => (
+
+        {message.length && showLoading  &&
+          <section className="flex justify-center items-center w-full">
+            <div ref={ref}>
+              <img
+                src="./spinner.svg"
+                alt="spinner"
+                className="object-contain w-[4rem] text-white"
+              />
+            </div>
+          </section>
+        }
+        {message.map((message, index) => (
           <div
             ref={messageEndRef}
             key={message._id}
-            className={`chat ${message.senderId === authUser._id && !message?.senderInfo?.ai ? "chat-end" : "chat-start"}`}
+            className={`chat mt-0 ${message.senderId === authUser._id && !message?.senderInfo?.ai ? "chat-end" : "chat-start"}`}
           >
             <div className=" chat-image avatar">
               <div className="size-10 rounded-full border">
                 <img loading="blur"
                   src={
-                    message.senderInfo !== undefined ? message.senderInfo.profilePic || "/avatar.png" : message.senderId === authUser._id ? authUser.profilePic || "/avatar.png" : selectedUser.profilePic || "/avatar.png"
+                    message.groupId !== "" || message.type == "ai" ? message.senderInfo.profilePic || "/avatar.png" : message.senderId === authUser._id ? authUser.profilePic || "/avatar.png" : selectedUser.profilePic || "/avatar.png"
                   }
                   alt="profile pic"
                 />
               </div>
             </div>
-            <div className="chat-header mb-1">
+            {(index==0 || new Date(messages[index-1]?.createdAt).getMinutes() != new Date(message.createdAt).getMinutes()) &&
+             <div className="chat-header mb-1">
               <time className="text-xs flex opacity-50 ml-1">
-                {message.senderId === authUser._id && !message?.senderInfo?.ai ? "You" : message.senderInfo !== undefined ? message.senderInfo.fullName : selectedUser.fullName} •
-                {message.senderInfo?.fullName === "Rapid AI" ? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
+                {message.senderId === authUser._id ? message.type == 'ai'? "Rapid AI" : "You" : selectedUser.fullName} •&nbsp;
+                { message.type == 'ai'? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
               </time>
-            </div>
+            </div>}
             <div className="chat-bubble flex flex-col">
               {message.image && (
                 <img loading="blur"
@@ -109,8 +155,9 @@ const ChatContainer = () => {
             </div>
           </div>
         ))}
+
         {isUserMessageLoading && (
-          <div className="chat chat-end">
+          <div className="chat chat-end ">
             <div className="chat chat-end mr-[-1rem]">
               <div className="chat-image avatar">
                 <div className="size-10 rounded-full border">
@@ -134,4 +181,4 @@ const ChatContainer = () => {
     </div>
   );
 };
-export default ChatContainer;
+export default chatContainer;

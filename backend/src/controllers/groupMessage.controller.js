@@ -155,47 +155,12 @@ export const getGroupMessages = async (req, res) => {
     if (!myId) {
       return res.status(400).json({ error: "User ID is required" });
     }
-
-    let messages = await GroupMessage.aggregate([
-      { $match: { groupId: new mongoose.Types.ObjectId(groupId) } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "senderId",
-          foreignField: "_id",
-          as: "senderInfo"
-        }
-      },
-      {
-        $unwind: "$senderInfo"
-      },
-      {
-        $project: {
-          text: 1,
-          senderId: 1,
-          image: 1,
-          createdAt: 1,
-          "senderInfo._id": 1,
-          "senderInfo.fullName": 1,
-          "senderInfo.email": 1,
-          "senderInfo.profilePic": 1
-        }
-      }
-    ]);
  
-
-    let aiMessage = await AiMessage.find({groupId}); 
-    let editAi = aiMessage.map((message) => message.toJSON());
-    editAi.forEach(async (message) => {
-      message.senderInfo = {
-        fullName: "Rapid AI",
-        ai: true,
-        profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg",
-      };
-    });
-    messages = [...messages, ...editAi];
-    messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
+ 
+    let messages = await Message.find( 
+        { groupId } 
+     ) 
+ 
     res.status(200).json(messages);
   } catch (error) {
     console.log("Error in getGroupMessages controller: ", error.message);
@@ -215,10 +180,15 @@ export const sendGroupMessage = async (req, res) => {
       imageUrl = uploadResponse.secure_url;
     }
     const user = await User.findById(senderId);
-    const newMessage = new GroupMessage({
+    const newMessage = new Message({
       groupId,
       senderId,
       text,
+      senderInfo:{
+        fullName: user.fullName,
+        ai: false,
+        profilePic: user.profilePic
+      },
       image: imageUrl
     });
     await newMessage.save();

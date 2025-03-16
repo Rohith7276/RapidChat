@@ -3,6 +3,18 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
+import Redis from "ioredis";
+
+const redis = new Redis({
+  host: "localhost", // Change to your Redis server if needed
+  port: 6379,
+});
+
+redis.on("connect", () => console.log("🚀 Redis connected!"));
+redis.on("error", (err) => console.error("❌ Redis Error:", err));
+
+export default redis;
+
 import path from "path";
 
 import { connectDB } from "./lib/db.js";
@@ -42,6 +54,6 @@ if (process.env.NODE_ENV === "production") {
 }
 
 server.listen(PORT, () => {
-  console.log("server is running on PORT:" + PORT);
+  console.log("🖥️ Server is running on PORT:" + PORT);
   connectDB();
 });

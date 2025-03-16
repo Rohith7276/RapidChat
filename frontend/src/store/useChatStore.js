@@ -61,16 +61,14 @@ export const useChatStore = create((set, get) => ({
 
   getMessages: async (user, page) => {
     if (page == 1) set({ isMessagesLoading: true });
-    console.log(user, page)
     try {
       let res
       if (user.fullName === undefined) res = await axiosInstance.get(`/groups/get-group-messages/${user._id}`);
-      else res = await axiosInstance.get(`/messages/${user._id}`);
-      console.log(page);
+      else res = await axiosInstance.get(`/messages/${user._id}/${page}`);
       if (res.data != null) {
         // console.log(res.data)
-        res.data = [...res.data, ...get().messages];
-        console.log(res.data)
+        // res.data = [...res.data];
+        // console.log(res.data)
         set({ messages: res.data }); 
       }
     } catch (error) {

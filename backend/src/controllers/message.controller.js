@@ -96,7 +96,7 @@ export const addFriend = async (req, res) => {
 
 export const getMessages = async (req, res) => {
   try {
-    const { id: userToChatId } = req.params;
+    const { id: userToChatId, page } = req.params;
     const myId = req.user?._id;
  
 
@@ -104,32 +104,19 @@ export const getMessages = async (req, res) => {
       return res.status(400).json({ error: "User ID is required" });
     }
 
+    
+    
     let messages = await Message.find({
       $or: [
         { senderId: myId, receiverId: userToChatId },
-        { senderId: userToChatId, receiverId: myId },
+        { senderId: userToChatId, receiverId: myId }, 
       ],
     }) 
+    .sort({createdAt: -1})
+    .limit(page*10)  
+    // .skip((page-1)*10) 
 
-    let aiMessage = await AiMessage.find({
-      $or: [
-        { senderId: userToChatId, receiverId: myId },
-        { senderId: myId, receiverId: userToChatId},
-      ],
-    })   
-
-    let editAi = aiMessage.map((message) => message.toJSON());
-    editAi.forEach(async (message) => {
-      message.senderInfo = {
-        fullName: "Rapid AI",
-        ai: true,
-        profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg",
-      };
-    });
-
-    messages = [...messages, ...editAi];
-    messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-    
+    messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     res.status(200).json(messages);
 
   } catch (error) {

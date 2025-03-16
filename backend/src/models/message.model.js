@@ -9,8 +9,30 @@ const messageSchema = new mongoose.Schema(
         },
         receiverId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
+            ref: "User",  
+        },
+        type: {
+            type: String,
+            enum: ["ai", "user"],
+            default: "user"
+        },
+        groupId: {
+            type: String,
+            default: "" 
+        },
+        senderInfo: {
+            fullname: {
+                type: String,
+                default: "",
+            },
+            ai: {
+                type: Boolean,
+                default: false
+            },
+            profilePic: {
+                type: String,
+                default: ""
+            }
         },
         text: {
             type: String,
