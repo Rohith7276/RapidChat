@@ -23,8 +23,7 @@ const CreateGroupPage = () => {
 
     reader.onload = async () => {
       const base64Image = reader.result;
-      setSelectedImg(base64Image);
-      await updateProfile({ profilePic: base64Image });
+      setSelectedImg(base64Image); 
     };
   };
 
@@ -33,8 +32,11 @@ const CreateGroupPage = () => {
     let groupUsersIds = groupUsers.map((user) => user._id);
     if(groupDesc == '' || groupName =='') 
       toast.error("Please fill all the details!");
-    await createGroup({ users: groupUsersIds, description: groupDesc, name: groupName });
+    await createGroup({ users: groupUsersIds, description: groupDesc, name: groupName, profilePic: selectedImg });
+    window.location.href = '/';
   };
+
+
   return (
     <div className='h-screen w-screen flex justify-center  pt-8  items-center'>
 
@@ -44,7 +46,7 @@ const CreateGroupPage = () => {
             {/* Image uploading */}
             <div className="relative w-[11rem]">
               <img loading="blur"
-                src={selectedImg || authUser.profilePic || "/avatar.png"}
+                src={selectedImg ||  "/group.png"}
                 alt="Profile"
                 className="size-32 rounded-full object-cover border-4 "
               />

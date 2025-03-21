@@ -1,6 +1,6 @@
 import { useChatStore } from "../store/useChatStore";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BrainCircuit } from 'lucide-react';
+import { BotMessageSquare, BrainCircuit } from 'lucide-react';
 import ChatHeader from "./ChatHeader";
 import { useInView } from "react-intersection-observer";
 
@@ -46,6 +46,7 @@ const chatContainer = () => {
 
   useEffect(() => {
     if (isUserMessageLoading) {
+      messageEndRef.current?.scrollIntoView();
       const interval = setInterval(() => {
         setFlashDot((prev) => (prev.length === 3 ? "" : prev + "."));
       }, 250);
@@ -108,7 +109,7 @@ const chatContainer = () => {
       <div className="flex-1  overflow-y-auto p-4 space-y-4"
         ref={containerRef}  >
 
-        {message.length && showLoading  &&
+        {message.length && showLoading  ?
           <section className="flex justify-center items-center w-full">
             <div ref={ref}>
               <img
@@ -117,7 +118,17 @@ const chatContainer = () => {
                 className="object-contain w-[4rem] text-white"
               />
             </div>
-          </section>
+          </section>:<></>
+        }
+          {!message.length &&
+          <div className="flex  items-center justify-center my-5">
+
+          <h1 className="font-bold text-xl">Type to start a </h1>
+          <div className="size-11 mx-2 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BotMessageSquare className="w-6 h-6 text-primary " />
+              </div>
+          <h1 className="font-bold text-2xl">RapidChat! </h1>
+          </div>
         }
         {message.map((message, index) => (
           <div

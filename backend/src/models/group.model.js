@@ -6,6 +6,10 @@ const groupSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        profilePic: {
+            type: String,
+            default: "",
+        },
         description: {
             type: String,
             required: true,

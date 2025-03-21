@@ -1,16 +1,24 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { Image, Send, X } from "lucide-react";
 import toast from "react-hot-toast"; 
 import { useAuthStore } from "../store/useAuthStore";
 
 const MessageInput = () => {
+
+  const { 
+    selectedUser, 
+  } = useChatStore();
+
+
+
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const { getAiMessage } = useChatStore();
   const { authUser  } = useAuthStore();
   const [aiMes, setAiMes] = useState("")
+
   const { sendMessage } = useChatStore();
 
   const handleImageChange = (e) => {
@@ -26,6 +34,11 @@ const MessageInput = () => {
     };
     reader.readAsDataURL(file);
   };
+
+  useEffect(() => {
+  setText("")
+  }, [selectedUser])
+  
 
   const removeImage = () => {
     setImagePreview(null);
@@ -62,7 +75,7 @@ const MessageInput = () => {
   };
 
   const handleInput = (e) => {
-    let  value = e.target.value
+    let  value = e.target.value 
     if(value.includes("@rapid")) { 
       let x = value.substring(value.indexOf("@rapid")+6); 
       e.target.style.color = "skyblue";
@@ -70,7 +83,7 @@ const MessageInput = () => {
       
       setAiMes(x);  
     }
-    else e.target.style.color = "inherit"
+    else{ e.target.style.color = "inherit"; e.target.style.fontWeight = "normal"}
     setText(value);
   }
 

@@ -4,7 +4,7 @@ import { GroupMessage } from "../models/groupMessage.model.js";
 import Message from "../models/message.model.js";
 import mongoose from "mongoose";
 // import { uploadOnCloudinary } from "../lib/cloudinary.js";
-import {cloudinary} from "../lib/cloudinary.js";
+import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import { AiMessage } from "../models/aiMessage.model.js";
 
@@ -56,8 +56,15 @@ export const getGroups = async (req, res) => {
 
 export const createGroup = async (req, res) => {
   try {
-    const { name, description, users, icon } = req.body;
+    const { name, description, users, profilePic } = req.body;
     const userId = req.user._id;
+ 
+    if (!profilePic) {
+      return res.status(400).json({ message: "Profile pic is required" });
+    }
+ 
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" })
@@ -67,9 +74,9 @@ export const createGroup = async (req, res) => {
     })
     const group = await Group.create({
       name,
-      description,
-      groutIcon: icon,
+      description, 
       admin: userId,
+      profilePic: uploadResponse.url,
       members: [...users, userId]
     })
     if (!group) return res.status(400).json({ message: "Group not created" })
@@ -119,7 +126,7 @@ export const addUserToGroup = async (req, res) => {
 
 export const removeUserFromGroup = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id); 
+    const user = await User.findById(req.user._id);
     const group = await Group.findById(new mongoose.Types.ObjectId(req.body.groupId));
     const userToRemove = await User.find({ email: req.params.userEmail });
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -155,12 +162,12 @@ export const getGroupMessages = async (req, res) => {
     if (!myId) {
       return res.status(400).json({ error: "User ID is required" });
     }
- 
- 
-    let messages = await Message.find( 
-        { groupId } 
-     ) 
- 
+
+
+    let messages = await Message.find(
+      { groupId }
+    )
+
     res.status(200).json(messages);
   } catch (error) {
     console.log("Error in getGroupMessages controller: ", error.message);
@@ -184,7 +191,7 @@ export const sendGroupMessage = async (req, res) => {
       groupId,
       senderId,
       text,
-      senderInfo:{
+      senderInfo: {
         fullName: user.fullName,
         ai: false,
         profilePic: user.profilePic
