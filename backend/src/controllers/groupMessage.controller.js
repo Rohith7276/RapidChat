@@ -9,60 +9,17 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 import { AiMessage } from "../models/aiMessage.model.js";
 
 
-export const getGroups = async (req, res) => {
-  try {
-    const loggedInUserId = req.user._id;
-
-    const groups = await User.aggregate([
-      {
-        $match: {
-          _id: new mongoose.Types.ObjectId(loggedInUserId),
-        },
-      },
-      {
-        $lookup: {
-          from: "groups",
-          localField: "groups",
-          foreignField: "_id",
-          as: "userGroups",
-          pipeline: [
-            {
-              $addFields: {
-                usersCount: {
-                  $cond: { if: { $isArray: "$users" }, then: { $size: "$users" }, else: 0 }
-                }
-              }
-            },
-            {
-              $project: {
-                name: 1,
-                description: 1,
-                profilePic: 1,
-                usersCount: 1
-              },
-            },
-          ],
-        },
-      }
-    ]);
-
-    res.status(200).json(groups.length ? groups[0].userGroups : []);
-
-  } catch (error) {
-    console.error("Error in getGroups: ", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
+ 
 
 export const createGroup = async (req, res) => {
   try {
     const { name, description, users, profilePic } = req.body;
     const userId = req.user._id;
- 
+
     if (!profilePic) {
       return res.status(400).json({ message: "Profile pic is required" });
     }
- 
+
     const uploadResponse = await cloudinary.uploader.upload(profilePic);
 
 
@@ -74,7 +31,7 @@ export const createGroup = async (req, res) => {
     })
     const group = await Group.create({
       name,
-      description, 
+      description,
       admin: userId,
       profilePic: uploadResponse.url,
       members: [...users, userId]
@@ -87,7 +44,7 @@ export const createGroup = async (req, res) => {
       x.groups.push(group._id);
       await x.save();
     })
-    return res.status(201).json({ group, message: "Group created successfully" })
+    return res.status(201).json({ updatedGroups: user.groups })
 
   } catch (error) {
 
@@ -185,7 +142,7 @@ export const sendGroupMessage = async (req, res) => {
       // Upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
-    }
+    } 
     const user = await User.findById(senderId);
     const newMessage = new Message({
       groupId,

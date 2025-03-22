@@ -20,6 +20,8 @@ const chatContainer = () => {
     isUserMessageLoading,
     unsubscribeFromMessages,
   } = useChatStore();
+  const prevScrollHeight = useRef(0)
+  const prevScrollTop = useRef(0)
   const { ref, inView } = useInView();
   const [showLoading, setShowLoading] = useState(true)
   const { authUser } = useAuthStore();
@@ -37,9 +39,13 @@ const chatContainer = () => {
   }, [inView]);
 
   useEffect(() => {
-    getMessages(selectedUser, page);
-    if (selectedUser.name === undefined) subscribeToMessages();
-    else subscribeToGroup();
+    
+    getMessages(selectedUser, page); 
+    if (selectedUser.name === undefined) {
+      subscribeToMessages();
+    } else {
+      subscribeToGroup();
+    }
     return () => unsubscribeFromMessages();
   }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
 
@@ -55,8 +61,6 @@ const chatContainer = () => {
   }, [isUserMessageLoading]);
 
   //Infinite scroll
-  const prevScrollHeight = useRef(0)
-  const prevScrollTop = useRef(0)
 
   useEffect(() => {
     prevScrollHeight.current = containerRef.current.scrollHeight;
@@ -68,7 +72,7 @@ const chatContainer = () => {
   useEffect(() => {
     if(size.current === messages.length) setShowLoading(false)
     else setShowLoading(true)
-    if ((prevScrollTop.current == 0 && size.current != messages.length)|| size.current == messages.length - 1) messageEndRef.current?.scrollIntoView();
+    if ((prevScrollTop.current == 0 && size.current != messages.length)|| size.current == messages.length - 1 ) messageEndRef.current?.scrollIntoView();
     else {
       const newScrollHeight = chatContainer.scrollHeight;
       chatContainer.scrollTop = prevScrollTop.current + (newScrollHeight - prevScrollHeight.current);

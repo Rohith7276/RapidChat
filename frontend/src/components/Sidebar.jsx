@@ -1,23 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect,  useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users } from "lucide-react"; 
+import { Users } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, getGroups, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
+  const { getUsers,   sidebarRefresh, setSidebarRefresh, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
 
-  const { onlineUsers } = useAuthStore(); 
-  const [friendId, setFriendId] = useState(""); 
+  const { onlineUsers, authUser } = useAuthStore();
+  const [friendId, setFriendId] = useState("");  
 
-  useEffect(() => {
-    getUsers();
-    getGroups();
-  }, [getUsers, getGroups]);
+  useEffect(() => { 
+    if(sidebarRefresh) {
+      getUsers(); 
+      console.log(authUser)
+      console.log('refreshih', sidebarRefresh)
+      setSidebarRefresh(false)
+    }
+  }, [sidebarRefresh ]); 
+
+  useEffect(() => {  
+
+      getUsers(); 
+  }, [  ]); 
 
   const filteredUsers = [...users, ...groups];
 
-  if (isUsersLoading) return <SidebarSkeleton />;
+  if (isUsersLoading ) return <SidebarSkeleton />;
 
   const handleAddFriend = () => {
     addFriend(friendId);
@@ -27,11 +36,11 @@ const Sidebar = () => {
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
-          <Users className="size-6" /> 
+          <Users className="size-6" />
           <span className="font-medium hidden lg:block">Contacts</span>
         </div>
-          <input type="text" onChange={(e)=> setFriendId(e.target.value) }/>
-          <button onClick={handleAddFriend}>add</button> 
+        <input type="text" onChange={(e) => setFriendId(e.target.value)} />
+        <button onClick={handleAddFriend}>add</button>
       </div>
 
       <div className="overflow-y-auto w-full py-3">
@@ -48,7 +57,7 @@ const Sidebar = () => {
             <div className="relative mx-auto lg:mx-0">
               <img loading="blur"
                 src={user.name !== undefined ? user.profilePic || "/group.png" : user.profilePic || "/avatar.png"}
-                alt={user.name} 
+                alt={user.name}
                 className="size-12 object-cover rounded-full"
               />
               {onlineUsers.includes(user._id) && (
@@ -61,9 +70,11 @@ const Sidebar = () => {
 
             {/* User info - only visible on larger screens */}
             <div className="hidden lg:block text-left min-w-0">
-              <div className="font-medium truncate">{user.fullName||user.name}</div> 
-              <div className="text-sm text-zinc-400">
-                {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+              <div className="font-medium truncate">{user.fullName || user.name}</div>
+              <div className="text-sm text-zinc-400 flex">
+                {/* {onlineUsers.includes(user._id) ? "Online" : "Offline"} */}
+                {user.name && <span className="text-green-400 font-semibold pr-1">{user.timeline.senderId == authUser._id? "You :" : "Idk :"}</span>}
+                <div className="overflow-x-hidden flex "><span>{user.timeline.text.slice(0,20)}</span> <span> {user.timeline.text.length >=20 ? "...": ""}</span></div>
               </div>
             </div>
           </button>
@@ -73,7 +84,7 @@ const Sidebar = () => {
           <div className="text-center text-zinc-500 py-4">No online users</div>
         )}
       </div>
-      
+
     </aside>
   );
 };
