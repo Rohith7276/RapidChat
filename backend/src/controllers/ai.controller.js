@@ -6,7 +6,7 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 
 export const AiChat = async (req, res) => {
     try {
-        const { input, receiverId, groupId, user  } = req.body;  
+        const { input, receiverId, groupId  } = req.body;  
         // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
         let text = input
         const response = await getResponse(text);

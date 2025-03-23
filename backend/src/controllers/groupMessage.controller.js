@@ -148,13 +148,14 @@ export const sendGroupMessage = async (req, res) => {
       groupId,
       senderId,
       text,
+      group: true,
       senderInfo: {
-        fullName: user.fullName,
+        fullname: user.fullName,
         ai: false,
         profilePic: user.profilePic
       },
       image: imageUrl
-    });
+    }); 
     await newMessage.save();
     const x = newMessage.toJSON()
 

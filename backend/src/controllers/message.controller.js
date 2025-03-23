@@ -31,7 +31,7 @@ export const getUsers = async (req, res) => {
                     $match: {
                       $expr: {
                         $or: [
-                          { $eq: ["$senderId", "$$userId"] },
+                          {$and: [{ $eq: ["$senderId", "$$userId"] }, {$eq: ["$group", false]} ]},
                           { $eq: ["$receiverId", "$$userId"] }
                         ]
                       }
@@ -41,7 +41,7 @@ export const getUsers = async (req, res) => {
                     $project: {
                       createdAt: 1,
                       text: 1,
-                      senderId: 1,
+                      senderId: 1, 
                     }
                   }
                 ],
@@ -63,8 +63,7 @@ export const getUsers = async (req, res) => {
           friends: 1, // Only include friend details in output 
         },
       },
-    ]);
-
+    ]); 
     const groups = await User.aggregate([
       {
         $match: {
@@ -94,6 +93,7 @@ export const getUsers = async (req, res) => {
                       createdAt: 1,
                       text: 1,
                       senderId: 1,
+                      senderInfo: 1, 
                     }
                   }
                 ],
@@ -112,8 +112,7 @@ export const getUsers = async (req, res) => {
         }
       }
        
-    ]);
-    console.log(groups[0].userGroups[0])
+    ]); 
     userWithFriends[0].friends = [...userWithFriends[0].friends, ...groups[0]?.userGroups]
     if (userWithFriends[0]?.friends?.length > 0) {
       userWithFriends[0].friends.sort((a, b) =>

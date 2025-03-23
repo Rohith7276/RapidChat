@@ -16,6 +16,10 @@ const messageSchema = new mongoose.Schema(
             enum: ["ai", "user"],
             default: "user"
         },
+        group: {
+            type: Boolean,
+            default: false
+        },
         groupId: {
             type: String,
             default: "" 
