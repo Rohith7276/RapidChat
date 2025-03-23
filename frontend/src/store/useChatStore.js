@@ -15,6 +15,14 @@ export const useChatStore = create((set, get) => ({
   sidebarRefresh: true,
   isUserMessageLoading: false,
 
+  getNotifications: async () => {
+    const socket = useAuthStore.getState().socket;
+
+    socket.on("notification", () => {
+      set({ sidebarRefresh: true })
+
+    }
+  )},
   getUsers: async () => {
     try {
       const res = await axiosInstance.get("/messages/users");
@@ -24,14 +32,14 @@ export const useChatStore = create((set, get) => ({
     } finally {
       set({ isUsersLoading: false });
     }
-  }, 
+  },
 
   addFriend: async (friendId) => {
     try {
       const res = await axiosInstance.patch(`/messages/add-friend/${friendId}`);
       set({ users: res.data.updatedFriends });
       toast.success("Friend added successfully");
-      set({sidebarRefresh: true})
+      set({ sidebarRefresh: true })
     } catch (error) {
       toast.error(error.response.data.message);
     }
@@ -39,9 +47,9 @@ export const useChatStore = create((set, get) => ({
   removeFriend: async (friendId) => {
     try {
       const res = await axiosInstance.patch(`/messages/add-friend/${friendId}`);
-      set({ users:  res.data.updatedFriends });
+      set({ users: res.data.updatedFriends });
       toast.success("Friend removed successfully");
-      set({sidebarRefresh: true})
+      set({ sidebarRefresh: true })
     } catch (error) {
       toast.error(error.response.data.message);
     }
@@ -52,7 +60,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const { groups } = get();
       const res = await axiosInstance.post("/groups/create-group", groupData);
-      set({ groups:  res.data.updatedGroups });
+      set({ groups: res.data.updatedGroups });
       toast.success(res.data.message);
     } catch (error) {
       toast.error(error.data.message);
@@ -69,7 +77,7 @@ export const useChatStore = create((set, get) => ({
         // console.log(res.data)
         // res.data = [...res.data];
         // console.log(res.data)
-        set({ messages: res.data }); 
+        set({ messages: res.data });
       }
     } catch (error) {
       toast.error(error.response.data.message);
@@ -104,8 +112,8 @@ export const useChatStore = create((set, get) => ({
         res = await axiosInstance.post(`/groups/send-group-message`, { ...messageData, groupId: selectedUser._id });
       else res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       set({ messages: [...messages, res.data] });
-      set({sidebarRefresh: true})
-      
+      set({ sidebarRefresh: true })
+
     } catch (error) {
       toast.error(error.response.data.message);
     }
@@ -119,7 +127,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.post(`/messages/send-image/${selectedUser._id}`, messageData);
       set({ messages: [...messages, res.data] });
-      set({sidebarRefresh: true})
+      set({ sidebarRefresh: true })
 
     } catch (error) {
       toast.error(error.response.data.message);
@@ -134,9 +142,8 @@ export const useChatStore = create((set, get) => ({
     socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser._id });
 
     socket.on("receiveGroupMessage", (newMessage) => {
-      set({sidebarRefresh: true})
+      set({ sidebarRefresh: true })
       const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
-
       if (!isMessageSentFromSelectedUser) {
         return;
       }
@@ -152,12 +159,12 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
     const socket = useAuthStore.getState().socket;
 
-
-    socket.on("newMessage", (newMessage) => {
-      set({sidebarRefresh: true})
-
-      const isMessageSentFromSelectedUser = (newMessage.senderId === selectedUser._id);
-      if (!isMessageSentFromSelectedUser) {
+     
+  socket.on("newMessage", (newMessage) => {
+    set({ sidebarRefresh: true })
+    
+    const isMessageSentFromSelectedUser = (newMessage.senderId === selectedUser._id); 
+      if (!isMessageSentFromSelectedUser || newMessage.groupId === "") { 
         return;
       }
       set({

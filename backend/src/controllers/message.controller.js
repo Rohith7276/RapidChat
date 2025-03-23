@@ -1,7 +1,6 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
-import mongoose from "mongoose";
-// import { uploadOnCloudinary } from "../lib/cloudinary.js";
+import mongoose from "mongoose"; 
 import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 
@@ -296,6 +295,7 @@ export const sendMessage = async (req, res) => {
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
+      io.to(receiverSocketId).emit("notification", "newMessage");
     }
 
     res.status(201).json(newMessage);

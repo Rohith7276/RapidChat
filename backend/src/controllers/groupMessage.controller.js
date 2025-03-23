@@ -1,12 +1,10 @@
 import User from "../models/user.model.js";
-import { Group } from "../models/group.model.js";
-import { GroupMessage } from "../models/groupMessage.model.js";
+import { Group } from "../models/group.model.js"; 
 import Message from "../models/message.model.js";
 import mongoose from "mongoose";
 // import { uploadOnCloudinary } from "../lib/cloudinary.js";
 import { cloudinary } from "../lib/cloudinary.js";
-import { getReceiverSocketId, io } from "../lib/socket.js";
-import { AiMessage } from "../models/aiMessage.model.js";
+import { getReceiverSocketId, io } from "../lib/socket.js"; 
 
 
  
@@ -144,6 +142,7 @@ export const sendGroupMessage = async (req, res) => {
       imageUrl = uploadResponse.secure_url;
     } 
     const user = await User.findById(senderId);
+    const group = await Group.findById(groupId) 
     const newMessage = new Message({
       groupId,
       senderId,
@@ -163,7 +162,13 @@ export const sendGroupMessage = async (req, res) => {
 
 
     io.to(groupId).emit("receiveGroupMessage", x);
-
+    
+    for(let i = 0; i < group.members.length; i++){
+      console.log("group id: ", group.members[i].toString());
+      let x = getReceiverSocketId(group.members[i].toString());
+       if(x)
+      io.to(x).emit("notification", x);
+    }
 
     res.status(201).json(newMessage);
   } catch (error) {
