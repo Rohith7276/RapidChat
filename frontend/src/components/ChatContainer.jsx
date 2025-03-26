@@ -8,7 +8,7 @@ import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
-import { X } from "lucide-react";
+import { X,TvMinimalPlay  } from "lucide-react";
 const chatContainer = () => {
   const {
     messages,
@@ -19,6 +19,8 @@ const chatContainer = () => {
     subscribeToGroup,
     isUserMessageLoading,
     unsubscribeFromMessages,
+    setStreamData,
+    streamData
   } = useChatStore();
   const prevScrollHeight = useRef(0)
   const prevScrollTop = useRef(0)
@@ -40,7 +42,8 @@ const chatContainer = () => {
 
   useEffect(() => {
     
-    getMessages(selectedUser, page); 
+    getMessages(selectedUser, page);  
+
     if (selectedUser.name === undefined) {
       subscribeToMessages();
     } else {
@@ -65,6 +68,7 @@ const chatContainer = () => {
   useEffect(() => {
     prevScrollHeight.current = containerRef.current.scrollHeight;
     prevScrollTop.current = containerRef.current.scrollTop;
+    console.log(streamData)
     setMessage(messages)
   }, [messages]);
   
@@ -191,7 +195,13 @@ const chatContainer = () => {
           </div>
         )}
       </div>
-
+        {streamData && <div className="fixed bottom-[9rem] right-[10rem] p-2 bg-base-200 shadow-md  shadow-red-500 rounded-full  ">
+          <TvMinimalPlay className="text-white"/>
+          <div>
+            <h1>{streamData[0]?.streamInfo.title}</h1> 
+          </div>
+        </div>}
+        
       <MessageInput />
     </div>
   );

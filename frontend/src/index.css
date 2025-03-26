@@ -18,3 +18,9 @@
 .scrollBar::-webkit-scrollbar-thumb:hover {
     background-color: #bed9e6;
 }
+
+
+.react-pdf__Page__canvas{
+    width: 100% !important;
+    height: auto !important;
+}

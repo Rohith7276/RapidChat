@@ -1,7 +1,7 @@
 import getResponse from "../lib/ai.js";
 import { AiMessage } from "../models/aiMessage.model.js";
 import Message from "../models/message.model.js";
-
+import { YoutubeTranscript } from 'youtube-transcript';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 
 export const AiChat = async (req, res) => {
@@ -10,7 +10,8 @@ export const AiChat = async (req, res) => {
         // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
         let text = input
         const response = await getResponse(text);
-        
+         
+
         const newMessage = new Message({ 
             text: response,
             type: "ai",
@@ -37,8 +38,26 @@ export const AiChat = async (req, res) => {
         }
         res.status(200).json(newMessage);
     } catch (error) {
-        console.log("Error in chat controller", error.message);
+        console.log("Error in ai chat controller", error.message);
         res.status(500).json({ message: "Internal Server Error" });
     }
 }
 
+export const AiSummary = async(youtubeUrl)=>{
+  try{    
+    const youtubeId = youtubeUrl.split('v=')[1].split('&')[0]; 
+    async function getYouTubeTranscript(videoId) { 
+        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+        return transcript.map(entry => entry.text).join(" ");
+    }
+    
+    const text = await getYouTubeTranscript(youtubeId)
+    const response = await getResponse("Summarize this video lecture from YouTube with full information in details :\n" + text.slice(0, 5980));
+
+   return response;
+  }
+  catch{
+    console.log("Error in ai summary controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}

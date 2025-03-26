@@ -14,7 +14,7 @@ const CreateGroup = () => {
     <div className='bg-base-300 absolute top-[17vh] right-[35vw] w-[44rem] flex justify-between'>
       <div className='w-full bg-base-100'>
 
-        <button className='bg-white text-black' onClick={handleCreateGroup}>click</button>
+        <button className='bg-gray-50 text-black' onClick={handleCreateGroup}>click</button>
       </div>
       <div className=' w-[50vw]'>
 

@@ -12,6 +12,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    
+    "youtube-transcript-api": "^1.1.2"
   }
 }

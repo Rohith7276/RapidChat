@@ -111,7 +111,7 @@ const CreateGroupPage = () => {
 
           <div className='flex items-center justify-center'>
 
-            <button className='bg-white text-black px-3 py-1 my-3 mb-7 rounded-md' onClick={handleCreateGroup}>Create</button>
+            <button className='bg-gray-50 text-black px-3 py-1 my-3 mb-7 rounded-md' onClick={handleCreateGroup}>Create</button>
           </div>
         </div>
         <div className=' w-[50vw] h-full bg-whidte'>

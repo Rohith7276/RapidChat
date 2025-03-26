@@ -11,9 +11,11 @@ export const useChatStore = create((set, get) => ({
   selectedUser: null,
   selectedGroup: null,
   isUsersLoading: true,
+  streamMode: false,
   isMessagesLoading: false,
   sidebarRefresh: true,
   isUserMessageLoading: false,
+  streamData: [],
 
   getNotifications: async () => {
     const socket = useAuthStore.getState().socket;
@@ -22,7 +24,8 @@ export const useChatStore = create((set, get) => ({
       set({ sidebarRefresh: true })
 
     }
-  )},
+    )
+  },
   getUsers: async () => {
     try {
       const res = await axiosInstance.get("/messages/users");
@@ -70,17 +73,18 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (user, page) => {
     if (page == 1) set({ isMessagesLoading: true });
     try {
-      let res
+      let res 
       if (user.fullName === undefined) res = await axiosInstance.get(`/groups/get-group-messages/${user._id}`);
       else res = await axiosInstance.get(`/messages/${user._id}/${page}`);
-      if (res.data != null) {
-        // console.log(res.data)
-        // res.data = [...res.data];
-        // console.log(res.data)
+      
+      const stream = await axiosInstance.get(`/auth/get-stream/${user._id}`);
+      console.log("stream",stream)
+      if (res.data != null) { 
         set({ messages: res.data });
+        set({ streamData: stream.data });
       }
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.message || "An error occurred while fetching messages.");
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -111,6 +115,7 @@ export const useChatStore = create((set, get) => ({
       if (selectedUser.name !== undefined)
         res = await axiosInstance.post(`/groups/send-group-message`, { ...messageData, groupId: selectedUser._id });
       else res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
+
       set({ messages: [...messages, res.data] });
       set({ sidebarRefresh: true })
 
@@ -131,6 +136,17 @@ export const useChatStore = create((set, get) => ({
 
     } catch (error) {
       toast.error(error.response.data.message);
+    }
+  },
+
+  createStream: async (data) => {
+    try {
+      const res = await axiosInstance.post("/messages/create-stream", data);
+      set({ streamData: res.data });
+      toast.success("Stream created successfully");
+    }
+    catch (error) {
+      toast.error("Couldn't create the stream");
     }
   },
 
@@ -159,12 +175,12 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
     const socket = useAuthStore.getState().socket;
 
-     
-  socket.on("newMessage", (newMessage) => {
-    set({ sidebarRefresh: true })
-    
-    const isMessageSentFromSelectedUser = (newMessage.senderId === selectedUser._id); 
-      if (!isMessageSentFromSelectedUser || newMessage.groupId === "") { 
+
+    socket.on("newMessage", (newMessage) => {
+      set({ sidebarRefresh: true })
+
+      const isMessageSentFromSelectedUser = (newMessage.senderId === selectedUser._id);
+      if (!isMessageSentFromSelectedUser || newMessage.groupId === "") {
         return;
       }
       set({
@@ -184,4 +200,6 @@ export const useChatStore = create((set, get) => ({
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
   setSidebarRefresh: (booleanVal) => set({ sidebarRefresh: booleanVal }),
+  setStreamMode: (booleanVal) => set({ streamMode: booleanVal }),
+  setStreamData: (data) => set({ streamData: data }),
 }));

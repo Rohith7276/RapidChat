@@ -20,9 +20,22 @@ const userSocketMap = {}; // {userId: socketId}
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
-
+  console.log(socket.id)
   const userId = socket.handshake.query.userId;
   if (userId) userSocketMap[userId] = socket.id;
+
+
+   
+
+    // Answering the call
+    socket.on("answer-call", (data) => {
+      console.log(`✅ Call answered by ${data.to}`);
+    
+      io.to(data.to).emit("call-accepted", data.signal);
+    });
+
+
+
 
   // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));

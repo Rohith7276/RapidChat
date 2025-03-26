@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, Send, X } from "lucide-react";
-import toast from "react-hot-toast"; 
+import { Image, TvMinimalPlay, Send, X } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 
 const MessageInput = () => {
 
-  const { 
-    selectedUser, 
+  const {
+    selectedUser,
+    streamMode,
+    setStreamMode,
+    streamData
   } = useChatStore();
 
 
@@ -16,7 +19,7 @@ const MessageInput = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   const { getAiMessage } = useChatStore();
-  const { authUser  } = useAuthStore();
+  const { authUser } = useAuthStore();
   const [aiMes, setAiMes] = useState("")
 
   const { sendMessage } = useChatStore();
@@ -36,9 +39,9 @@ const MessageInput = () => {
   };
 
   useEffect(() => {
-  setText("")
+    setText("")
   }, [selectedUser])
-  
+
 
   const removeImage = () => {
     setImagePreview(null);
@@ -59,7 +62,7 @@ const MessageInput = () => {
         text: y,
         image: x,
       });
-      if(aiMes.trim() !== ""){
+      if (aiMes.trim() !== "") {
         await getAiMessage({
           input: aiMes,
           user: authUser.fullName
@@ -75,17 +78,22 @@ const MessageInput = () => {
   };
 
   const handleInput = (e) => {
-    let  value = e.target.value 
-    if(value.includes("@rapid")) { 
-      let x = value.substring(value.indexOf("@rapid")+6); 
+    let value = e.target.value
+    if (value.includes("@rapid")) {
+      let x = value.substring(value.indexOf("@rapid") + 6);
       e.target.style.color = "skyblue";
       e.target.style.fontWeight = "bold"
-      
-      setAiMes(x);  
+
+      setAiMes(x);
     }
-    else{ e.target.style.color = "inherit"; e.target.style.fontWeight = "normal"}
+    else { e.target.style.color = "inherit"; e.target.style.fontWeight = "normal" }
     setText(value);
   }
+
+  const handleStream = () => { 
+    setStreamMode(!streamMode)    
+  }
+
 
   return (
     <div className="p-4 w-full">
@@ -115,7 +123,7 @@ const MessageInput = () => {
             type="text"
             className="w-full input input-bordered rounded-lg input-sm sm:input-md"
             placeholder="Type a message..."
-            value={text}   
+            value={text}
             onChange={(e) => handleInput(e)}
           />
           <input
@@ -125,6 +133,12 @@ const MessageInput = () => {
             ref={fileInputRef}
             onChange={handleImageChange}
           />
+
+          {/* //video stream */}
+
+          <button className={`  btn btn-circle text-zinc-400 `} onClick={handleStream} type="button"  >
+            <TvMinimalPlay />
+          </button>
 
           <button
             type="button"
