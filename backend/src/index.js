@@ -4,16 +4,17 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import fs from "fs";
 import Redis from "ioredis";
+import pdfParse from "pdf-parse";
 
-const redis = new Redis({
-  host: "localhost", // Change to your Redis server if needed
-  port: 6379,
-});
+// const redis = new Redis({
+//   host: "localhost", // Change to your Redis server if needed
+//   port: 6379,
+// });
 
-redis.on("connect", () => console.log("🚀 Redis connected!"));
-redis.on("error", (err) => console.error("❌ Redis Error:", err));
+// redis.on("connect", () => console.log("🚀 Redis connected!"));
+// redis.on("error", (err) => console.error("❌ Redis Error:", err));
 
-export default redis;
+// export default redis;
 
 import path from "path";
 
@@ -24,6 +25,7 @@ import messageRoutes from "./routes/message.route.js";
 import groupRoutes from "./routes/groupMessage.route.js";
 import { app, server } from "./lib/socket.js";
 import multer from "multer";
+import { AiSummary } from "./controllers/ai.controller.js";
 
 dotenv.config();
 
@@ -56,16 +58,17 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Upload PDF API
-app.post("/upload", upload.single("pdf"), (req, res) => {
+app.post("/upload", upload.single("pdf"), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-
-  // const fileToDelete = path.join("uploads", req.file.filename);
-  // setTimeout(() => {
-  //   fs.unlink(fileToDelete, (err) => {
-  //     if (err) console.error("Error deleting file:", err); 
-  //   });
-  // }, 5000); // Wait 5 seconds before deleting
-  res.json({ fileUrl: `http://localhost:${PORT}/uploads/${req.file.filename}` });
+  
+  const x = path.join(__dirname, req.file.path); 
+  const dataBuffer = fs.readFileSync(x); // Read PDF file
+  let data = await pdfParse(dataBuffer); // Extract text
+  // console.log("Extracted Text:", data.text);
+  // const aiSum = await AiSummary(data.text)
+  // console.log(aiSum);
+  data = data.text.slice(0, 5980) 
+  res.json({ fileUrl: `http://localhost:${PORT}/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
 });
 
 

@@ -3,6 +3,7 @@ import { useChatStore } from "../store/useChatStore";
 import { Image, TvMinimalPlay, Send, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
+import { formatMessageTime } from "../lib/utils";
 
 const MessageInput = () => {
 
@@ -10,11 +11,12 @@ const MessageInput = () => {
     selectedUser,
     streamMode,
     setStreamMode,
-    streamData
+    streamData,
+    streamSet, 
+    getStreamAiMessage
   } = useChatStore();
 
-
-
+  const [streamHover, setStreamHover] = useState(false)
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
@@ -25,6 +27,7 @@ const MessageInput = () => {
   const { sendMessage } = useChatStore();
 
   const handleImageChange = (e) => {
+
     const file = e.target.files[0];
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
@@ -47,6 +50,12 @@ const MessageInput = () => {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+  useEffect(() => {
+    if(streamData.length != 0 && streamMode){
+      
+    }
+  }, [streamData, streamMode])
+  
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -63,10 +72,19 @@ const MessageInput = () => {
         image: x,
       });
       if (aiMes.trim() !== "") {
-        await getAiMessage({
-          input: aiMes,
-          user: authUser.fullName
-        });
+        if (streamData.length != 0 && streamMode ==false) {
+
+          await getAiMessage({
+            input: aiMes,
+            user: authUser.fullName
+          });
+        }
+        else {
+          await getStreamAiMessage({
+            input: aiMes,
+            user: authUser.fullName, 
+          });
+        }
       }
       setAiMes("");
 
@@ -90,8 +108,8 @@ const MessageInput = () => {
     setText(value);
   }
 
-  const handleStream = () => { 
-    setStreamMode(!streamMode)    
+  const handleStream = () => {
+    setStreamMode(!streamMode)
   }
 
 
@@ -135,8 +153,28 @@ const MessageInput = () => {
           />
 
           {/* //video stream */}
+          <button className={` streamIcon btn btn-circle  ${streamData.length != 0 ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
+            {streamData.length != 0 && <div className=" p-1 bg-base-content max-w-74 rounded-md  absolute mt-[-11rem] max-h-30 streamInfo text-base-200">
+              <div className="p-2  ">
 
-          <button className={`  btn btn-circle text-zinc-400 `} onClick={handleStream} type="button"  >
+                <div className="flex gap-1 items-center justify-center flex-col w-full">
+
+                  <h1 className="text-base-50 font-bold text-xl">{streamData[0]?.streamInfo.title}</h1>
+                  <h1>{streamData[0]?.streamInfo.description}</h1>
+                </div>
+                <div className="flex gap-2 items-center justify-center ">
+
+                  <h1>Created by  </h1>
+                  <img className="size-6 object-cover rounded-full" src={streamData[0]?.senderInfo?.profilePic} alt="profile" />
+                  <h1> {streamData[0]?.senderInfo?.fullName}</h1>
+                  <h1>
+                    {"on " + new Date(streamData[0]?.createdAt).toDateString() + " at " + formatMessageTime(new Date(streamData[0]?.createdAt))}
+
+                  </h1>
+                </div>
+
+              </div>
+            </div>}
             <TvMinimalPlay />
           </button>
 
@@ -151,7 +189,7 @@ const MessageInput = () => {
         </div>
         <button
           type="submit"
-          className="btn btn-sm btn-circle"
+          className="btn btn-sm btn-circle "
           disabled={!text.trim() && !imagePreview}
         >
           <Send size={22} />

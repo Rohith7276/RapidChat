@@ -6,7 +6,7 @@ const SidebarSkeleton = () => {
 
   return (
     <aside
-      className="h-full w-20 lg:w-72 border-r border-base-300 
+      className="h-full w-20   lg:w-72 border-r border-base-300 
     flex flex-col transition-all duration-200"
     >
       {/* Header */}
@@ -18,7 +18,7 @@ const SidebarSkeleton = () => {
       </div>
 
       {/* Skeleton Contacts */}
-      <div className="overflow-y-auto w-full py-3">
+      <div className="overflow-y-auto  py-3">
         {skeletonContacts.map((_, idx) => (
           <div key={idx} className="w-full p-3 flex items-center gap-3">
             {/* Avatar skeleton */}

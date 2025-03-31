@@ -28,16 +28,27 @@ const streamSchema = new mongoose.Schema(
         }, 
         streamInfo: {
             videoUrl: {
+                type: String, 
+            },
+            pdfUrl: {
+                type: String, 
+            },
+            pdfName: {
                 type: String,
-                required: true
+            },
+            pdfData: {
+                type: String, 
+            },
+            type: {
+                type: String, 
+                enum: ["video", "pdf"],
+                default: "video"
             },
             title: {
-                type: String,
-                requrired: true
+                type: String, 
             },
             description:{
-                type: String,
-                required: true
+                type: String, 
             }            
         },
         stopTime: {

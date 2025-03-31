@@ -24,3 +24,11 @@
     width: 100% !important;
     height: auto !important;
 }
+
+.streamInfo {
+    display: none; 
+} 
+
+.streamIcon:hover .streamInfo {
+    display: flex !important;
+}

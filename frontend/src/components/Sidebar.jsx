@@ -5,7 +5,7 @@ import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, getNotifications, streamMode,  sidebarRefresh, setSidebarRefresh, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
+  const { getUsers, getNotifications, getStreamCreation, streamMode,  sidebarRefresh, setSidebarRefresh, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
 
   const { onlineUsers, authUser } = useAuthStore();
   const [friendId, setFriendId] = useState("");  
@@ -21,6 +21,7 @@ const Sidebar = () => {
 
   useEffect(() => {  
       getNotifications();
+      getStreamCreation();
       getUsers(); 
   }, [  ]); 
 

@@ -16,7 +16,7 @@ export const useChatStore = create((set, get) => ({
   sidebarRefresh: true,
   isUserMessageLoading: false,
   streamData: [],
-
+  streamSet: false,
   getNotifications: async () => {
     const socket = useAuthStore.getState().socket;
 
@@ -26,6 +26,25 @@ export const useChatStore = create((set, get) => ({
     }
     )
   },
+  getStreamCreation: async () => {
+    const socket = useAuthStore.getState().socket;
+
+    socket.on("stream", (data) => {
+      console.log('streamset', data)
+      if(data.stopTime ==null) {
+      set({streamData:data })
+
+      set({streamSet: true})
+      }
+      else{
+      set({streamData: [] })
+
+      set({ streamSet: false })
+      }
+    }
+    )
+  },
+
   getUsers: async () => {
     try {
       const res = await axiosInstance.get("/messages/users");
@@ -73,16 +92,16 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (user, page) => {
     if (page == 1) set({ isMessagesLoading: true });
     try {
-      let res 
+      let res
       if (user.fullName === undefined) res = await axiosInstance.get(`/groups/get-group-messages/${user._id}`);
       else res = await axiosInstance.get(`/messages/${user._id}/${page}`);
-      
-      const stream = await axiosInstance.get(`/auth/get-stream/${user._id}`);
-      console.log("stream",stream)
-      if (res.data != null) { 
+
+      // const stream = await axiosInstance.get(`/auth/get-stream/${user._id}`);
+      // console.log("stream",stream)
+      if (res.data != null)
         set({ messages: res.data });
-        set({ streamData: stream.data });
-      }
+      //   set({ streamData: stream.data });
+      // }
     } catch (error) {
       toast.error(error.response?.message || "An error occurred while fetching messages.");
     } finally {
@@ -103,6 +122,25 @@ export const useChatStore = create((set, get) => ({
       set({ messages: [...messages, newMes] });
     } catch (error) {
       toast.error(error.response.data.message);
+    }
+  },
+  getStreamAiMessage: async (messageData) => {
+    const { selectedUser, messages } = get();
+    try {
+      let res = {};
+      if (selectedUser.fullName !== undefined){
+
+        const { streamData } = get();
+        console.log("streamData", streamData)
+        res = await axiosInstance.post(`/messages/stream-ai`, { ...messageData, data: streamData?.streamInfo?.pdfData?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
+      }
+      else
+        res = await axiosInstance.post(`/messages/stream-ai`, { ...messageData, receiverId: null, groupId: selectedUser._id });
+      const newMes = { ...res.data, _id: "1", senderId: "67af8f1706ba3b36e9679f9d", senderInfo: { fullName: "Rapid AI", profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg" } };
+
+      set({ messages: [...messages, newMes] });
+    } catch (error) {
+      toast.error("error in getting stream ai message" + error);
     }
   },
 
@@ -142,11 +180,48 @@ export const useChatStore = create((set, get) => ({
   createStream: async (data) => {
     try {
       const res = await axiosInstance.post("/messages/create-stream", data);
+
       set({ streamData: res.data });
-      toast.success("Stream created successfully");
+
+      toast.success("Stream created successfully" + res.data);
     }
     catch (error) {
       toast.error("Couldn't create the stream");
+    }
+  },
+
+  getStream: async () => {
+    try{
+    const { selectedUser } = get();
+
+    const res = await axiosInstance.get(`/auth/user/get-stream/${selectedUser._id}`)
+
+    if (res.data.length) {
+      console.log("here ", res.data)
+      set({ streamData: res.data[0] })
+    }
+    else {
+      set({ streamData: [] })
+    }
+  }
+    catch (error) {
+      set({ streamData: [] })
+
+    }
+  },
+  streamStart: async () => {
+    console.log("stream start")
+  },
+
+  endStream: async () => {
+    try {
+      const { selectedUser } = get();
+      const res = await axiosInstance.get(`/auth/user/end-stream/${selectedUser._id}`)
+      console.log("here ", res.data)
+      toast.success("Stream ended successfully");
+    } catch (error) {
+      toast.error("Couldn't end the stream");
+
     }
   },
 
@@ -163,7 +238,6 @@ export const useChatStore = create((set, get) => ({
       if (!isMessageSentFromSelectedUser) {
         return;
       }
-
       set({
         messages: [...get().messages, newMessage],
       });
@@ -180,7 +254,7 @@ export const useChatStore = create((set, get) => ({
       set({ sidebarRefresh: true })
 
       const isMessageSentFromSelectedUser = (newMessage.senderId === selectedUser._id);
-      if (!isMessageSentFromSelectedUser || newMessage.groupId === "") {
+      if (!isMessageSentFromSelectedUser) {
         return;
       }
       set({
