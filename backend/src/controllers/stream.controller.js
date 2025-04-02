@@ -1,22 +1,20 @@
 import User from "../models/user.model.js";
 import { Group } from "../models/group.model.js";
-import Stream from "../models/stream.model.js"; 
+import Stream from "../models/stream.model.js";
 import fs from 'fs';
 import path from 'path';
-import { getReceiverSocketId, io } from "../lib/socket.js";
+import { getReceiverSocketId, io } from "../lib/socket.js"; 
 
 
 
 
 export const createStream = async (req, res) => {
     try {
-        let { title, description, pdfUrl, pdfData, videoUrl, groupId,pdfName, recieverId } = req.body;
+        let { title, description, pdfUrl, pdfData, videoUrl, groupId, pdfName, recieverId } = req.body;
         const userId = req.user._id;
         const user = await User.findById(userId);
-        const summary = null;//await AiSummary(videoUrl);
-        // console.log("hi")
+        const summary = null;
         if (!user) return res.status(404).json({ message: "User not found" });
-        // if (!summary) return res.status(400).json({ message: "Summary not generated" });
         if (!videoUrl && !pdfUrl) return res.status(400).json({ message: "Any one url is required" });
 
         if (!groupId && !recieverId) {
@@ -58,10 +56,10 @@ export const createStream = async (req, res) => {
         });
         if (!stream) return res.status(400).json({ message: "Stream not created" });
         const receiverSocketId = getReceiverSocketId(recieverId);
-        if (receiverSocketId) { 
-          io.to(receiverSocketId).emit("stream", stream);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("stream", stream);
         }
-    
+
         return res.status(201).json(stream);
     }
     catch (err) {
@@ -70,14 +68,44 @@ export const createStream = async (req, res) => {
     }
 }
 
+export const streamControls = async (req, res) => {
+    try {
+        const { id: friendId, streamId, action } = req.params;
+        const userId = req.user._id;
+        let friend = await User.findById(friendId);
+        if (!friend) {
+            friend = await Group.findById(friendId)
+        }
+        if (!friend) return res.status(404).json({ message: "Friend not found" });
+
+
+        const stream = await Stream.findById(streamId);
+        const receiverSocketId = getReceiverSocketId(friend._id);
+        console.log(userId, friendId)
+        if (!stream) return res.status(400).json({ message: "Stream not found" });
+
+        if (!receiverSocketId) {
+            return res.status(400).json({ message: "Streamer is offline" });
+        }
+        io.to(receiverSocketId).emit("streamControls", action, stream, userId);
+        return res.status(200).json({ message: "Stream action sent" });
+
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+}
+
 export const getStream = async (req, res) => {
     try {
         let { id: friendId } = req.params;
-        const userId = req.user._id; 
+        const userId = req.user._id;
         if (!friendId) {
             return res.status(400).json({ message: "ID parameter is required" });
         }
-        const friend = await User.findById(friendId); 
+        let friend = await User.findById(friendId);
+        if (!friend) {
+            friend = await Group.findById(friendId)
+        }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
         const streams = await Stream.find(
             {
@@ -92,7 +120,7 @@ export const getStream = async (req, res) => {
                 }, {
                     stopTime: null
                 }]
-            }); 
+            });
         return res.status(200).json(streams);
     } catch (error) {
         console.error("Error in getStream: ", error.message);
@@ -104,12 +132,16 @@ export const getStream = async (req, res) => {
 export const endStream = async (req, res) => {
     try {
         let { id: friendId } = req.params;
-        const userId = req.user._id; 
+        const userId = req.user._id;
         if (!friendId) {
             return res.status(400).json({ message: "ID parameter is required" });
         }
         const friend = await User.findById(friendId);
+        if (!friend) {
+            friend = await Group.findById(friendId)
+        }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
+
         const streams = await Stream.findOneAndUpdate(
             {
                 $and: [
@@ -126,20 +158,21 @@ export const endStream = async (req, res) => {
             { $set: { stopTime: new Date() } },
             { new: true }
         );
+
         if (streams && streams.streamInfo) {
             const fileUrl = streams.streamInfo.type === "pdf" ? streams.streamInfo.pdfUrl : streams.streamInfo.videoUrl;
             if (fileUrl) {
-            const filePath = path.resolve('uploads', path.basename(fileUrl));
-            fs.unlink(filePath, (err) => {
-                if (err) {
-               return res.status(500).json({ error: "Error deleting file" });
-                }  
-            });
+                const filePath = path.resolve('uploads', path.basename(fileUrl));
+                fs.unlink(filePath, (err) => {
+                    if (err) {
+                        return res.status(500).json({ error: "Error deleting file" });
+                    }
+                });
             }
-        }
+        } 
         const receiverSocketId = getReceiverSocketId(friendId);
-        if (receiverSocketId) { 
-          io.to(receiverSocketId).emit("stream", streams);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("stream", streams);
         }
         return res.status(200).json(streams);
     } catch (error) {

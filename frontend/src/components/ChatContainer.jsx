@@ -21,6 +21,7 @@ const chatContainer = () => {
     unsubscribeFromMessages,
     streamSet,
     getStream,
+    setStreamMode,
     streamMode,
     setStreamData,
     streamData
@@ -46,8 +47,8 @@ const chatContainer = () => {
 
   useEffect(() => {
     size.current = null
-    getMessages(selectedUser, page);
     getStream()
+    getMessages(selectedUser, page);
     if (selectedUser.name === undefined) {
       subscribeToMessages();
     } else {
@@ -56,6 +57,11 @@ const chatContainer = () => {
     return () => unsubscribeFromMessages();
   }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
 
+  useEffect(() => {
+    setStreamMode(false)
+    
+  }, [selectedUser._id])
+  
 
 
 

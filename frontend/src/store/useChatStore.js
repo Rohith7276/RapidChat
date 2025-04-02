@@ -17,6 +17,13 @@ export const useChatStore = create((set, get) => ({
   isUserMessageLoading: false,
   streamData: [],
   streamSet: false,
+  streamYoutube: false,
+  pdfScroll: 0,
+  pdfCheck: false,
+  pdfScrollTop: 0,
+
+  setStreamYoutube: (boolval) => set({streamYoutube: boolval}),
+  setPdfScroll: (scroll) => set({ pdfScroll: scroll }),
   getNotifications: async () => {
     const socket = useAuthStore.getState().socket;
 
@@ -29,18 +36,38 @@ export const useChatStore = create((set, get) => ({
   getStreamCreation: async () => {
     const socket = useAuthStore.getState().socket;
 
-    socket.on("stream", (data) => {
-      console.log('streamset', data)
-      if(data.stopTime ==null) {
-      set({streamData:data })
+    socket.on("stream", async (data) => {
+      if (data.stopTime == null) {
+        set({ streamData: data })
 
-      set({streamSet: true})
+        set({ streamSet: true })
       }
-      else{
-      set({streamData: [] })
+      else {
+        set({ streamData: [] })
 
-      set({ streamSet: false })
+        set({ streamSet: false })
       }
+    }
+    )
+    socket.on("streamControls", async (data, stream, userId) => {
+      set({ pdfCheck: !get().pdfCheck })
+      setTimeout(async () => {
+
+        const pdfScroll = get().pdfScroll;
+        const streamData = get().streamData;
+        console.log("data", data)
+        console.log(streamData)
+        if (data == 999999 && streamData?._id == stream._id) {
+          console.log("HI")
+          console.log(pdfScroll)
+          await axiosInstance.get(`/auth/user/stream-control/${userId}/${pdfScroll}/${stream._id}`);
+
+        }
+        else {
+          console.log("Setting pdf Scroll")
+          set({ pdfScrollTop: data })
+        }
+      }, 100);
     }
     )
   },
@@ -128,7 +155,7 @@ export const useChatStore = create((set, get) => ({
     const { selectedUser, messages } = get();
     try {
       let res = {};
-      if (selectedUser.fullName !== undefined){
+      if (selectedUser.fullName !== undefined) {
 
         const { streamData } = get();
         console.log("streamData", streamData)
@@ -191,19 +218,19 @@ export const useChatStore = create((set, get) => ({
   },
 
   getStream: async () => {
-    try{
-    const { selectedUser } = get();
+    try {
+      const { selectedUser } = get();
 
-    const res = await axiosInstance.get(`/auth/user/get-stream/${selectedUser._id}`)
+      const res = await axiosInstance.get(`/auth/user/get-stream/${selectedUser._id}`)
 
-    if (res.data.length) {
-      console.log("here ", res.data)
-      set({ streamData: res.data[0] })
+      if (res.data.length) {
+        console.log("here ", res.data)
+        set({ streamData: res.data[0] })
+      }
+      else {
+        set({ streamData: [] })
+      }
     }
-    else {
-      set({ streamData: [] })
-    }
-  }
     catch (error) {
       set({ streamData: [] })
 
@@ -276,4 +303,5 @@ export const useChatStore = create((set, get) => ({
   setSidebarRefresh: (booleanVal) => set({ sidebarRefresh: booleanVal }),
   setStreamMode: (booleanVal) => set({ streamMode: booleanVal }),
   setStreamData: (data) => set({ streamData: data }),
+  setStartStreaming: (booleanVal) => set({ startStreaming: booleanVal }),
 }));

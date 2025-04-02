@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useRef, useState } from "react"; 
 import { useChatStore } from "../store/useChatStore";
 
 const YouTubePlayer = ({ videoId, userId }) => {
@@ -8,6 +7,7 @@ const YouTubePlayer = ({ videoId, userId }) => {
   const {streamData} = useChatStore();
 
   useEffect(() => {
+    console.log(videoId)
     const loadYouTubeAPI = () => {
       const script = document.createElement("script");
       script.src = "https://www.youtube.com/iframe_api";
@@ -29,8 +29,10 @@ const YouTubePlayer = ({ videoId, userId }) => {
   }, []);
 
   const createPlayer = () => {
+    console.log(videoId)
     const url = new URL(videoId);
     const videoIdParam = url.searchParams.get("v");
+    console.log(videoIdParam)
     playerRef.current = new window.YT.Player("player", {
       videoId: videoIdParam,
       events: {
