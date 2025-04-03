@@ -7,11 +7,13 @@ import { LogOut, Settings, User } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Link } from "react-router-dom";
 import CreateGroup from './createGroup';
+import { useChatStore } from '../store/useChatStore';
 const MenuSection = () => {
     const menuDiv = useRef(null);
     const { logout, authUser } = useAuthStore();
+    const {addFriend} = useChatStore()
     const [createGroup, setCreateGroup] = useState(false)
-
+    const [friendId, setFriendId] = useState("");
     const { contextSafe } = useGSAP();
 
     const closeAnimation = contextSafe(() => {
@@ -46,6 +48,9 @@ const MenuSection = () => {
         })
     })
 
+    const handleAddFriend = () => {
+        addFriend(friendId);
+      }
 
     return (
         <>
@@ -71,6 +76,8 @@ const MenuSection = () => {
 
                         {authUser && (
                             <>
+                                <input type="text" onChange={(e) => setFriendId(e.target.value)} />
+                                <button onClick={handleAddFriend}>add</button>
                                 <Link to={"/profile"} onClick={() => {
                                     closeAnimation()
                                 }} className={`btn btn-sm gap-2 w-full`}>

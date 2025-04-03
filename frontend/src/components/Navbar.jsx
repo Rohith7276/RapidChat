@@ -19,7 +19,7 @@ const Navbar = () => {
                 <BotMessageSquare className="w-5 h-5 text-primary" />
               </div>
               <h1 className="text-lg font-bold">
-                RapidChat
+                RapidStudy
               </h1>
             </Link>
           </div>

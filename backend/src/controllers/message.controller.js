@@ -3,6 +3,7 @@ import Message from "../models/message.model.js";
 import mongoose from "mongoose"; 
 import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
+import  client  from "../lib/redisClient.js";
 
 export const getUsers = async (req, res) => {
   try {
@@ -247,10 +248,10 @@ export const getMessages = async (req, res) => {
       ],
     })
       .sort({ createdAt: -1 })
-      .limit(page * 10)
-    // .skip((page-1)*10) 
+      // .limit(page * 100) 
 
     messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
     res.status(200).json(messages);
 
   } catch (error) {

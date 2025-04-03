@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import fs from "fs";
-import Redis from "ioredis";
+// import Redis from "ioredis";
 import pdfParse from "pdf-parse";
 
 // const redis = new Redis({
@@ -24,8 +24,7 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import groupRoutes from "./routes/groupMessage.route.js";
 import { app, server } from "./lib/socket.js";
-import multer from "multer";
-import { AiSummary } from "./controllers/ai.controller.js";
+import multer from "multer"; 
 
 dotenv.config();
 

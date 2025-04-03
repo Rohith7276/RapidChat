@@ -29,9 +29,6 @@ const Sidebar = () => {
 
   if (isUsersLoading ) return <SidebarSkeleton />;
 
-  const handleAddFriend = () => {
-    addFriend(friendId);
-  }
 
   return (
     <aside className={`h-full w-24 ${streamMode?" ":"lg:w-72"} border-r border-base-300 flex flex-col transition-all duration-200`}>

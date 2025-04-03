@@ -144,7 +144,7 @@ const chatContainer = () => {
       <div className="flex-1  overflow-y-auto p-4 space-y-4"
         ref={containerRef}  >
 
-        {message.length && showLoading ?
+        {/* {message.length && showLoading ?
           <section className="flex justify-center items-center w-full">
             <div ref={ref}>
               <img
@@ -154,7 +154,7 @@ const chatContainer = () => {
               />
             </div>
           </section> : <></>
-        }
+        } */}
         {!message.length &&
           <div className="flex  items-center justify-center my-5">
 
@@ -162,7 +162,7 @@ const chatContainer = () => {
             <div className="size-11 mx-2 rounded-lg bg-primary/10 flex items-center justify-center">
               <BotMessageSquare className="w-6 h-6 text-primary " />
             </div>
-            <h1 className="font-bold text-2xl">RapidChat! </h1>
+            <h1 className="font-bold text-2xl">RapidStudy! </h1>
           </div>
         }
         {message.map((message, index) => (
