@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 // import { uploadOnCloudinary } from "../lib/cloudinary.js";
 import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js"; 
+import client from "../lib/redisClient.js";
 
 
  
@@ -61,6 +62,7 @@ export const addUserToGroup = async (req, res) => {
     if (!group) return res.status(404).json({ message: "Group not found" });
     if (group.admin.toString() != user._id.toString()) return res.status(400).json({ message: "User not admin of group" });
     if (group.users.find(u => u.toString() === userId)) return res.status(400).json({ message: "User already in group" });
+    
     const updatedGroup = await Group.findByIdAndUpdate(
       groupId,
       {
@@ -70,6 +72,7 @@ export const addUserToGroup = async (req, res) => {
       },
       { new: true }
     );
+
     if (!updatedGroup) return res.status(404).json({ message: "User not added to group" });
     return res.status(201).json({ updatedGroup, message: "User added to group successfully" });
   }
@@ -122,6 +125,7 @@ export const getGroupMessages = async (req, res) => {
     let messages = await Message.find(
       { groupId }
     )
+    await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
 
     res.status(200).json(messages);
   } catch (error) {
@@ -169,7 +173,7 @@ export const sendGroupMessage = async (req, res) => {
        if(x)
       io.to(x).emit("notification", x);
     }
-
+    await client.del('messages'+ req.user._id + groupId); 
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendGroupMessage controller: ", error.message);

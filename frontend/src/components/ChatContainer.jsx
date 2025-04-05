@@ -9,6 +9,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { X, TvMinimalPlay } from "lucide-react";
+import VideoStream from "./VideoStream";
 const chatContainer = () => {
   const {
     messages,
@@ -22,6 +23,7 @@ const chatContainer = () => {
     streamSet,
     getStream,
     setStreamMode,
+    videoCall,
     streamMode,
     setStreamData,
     streamData
@@ -141,7 +143,7 @@ const chatContainer = () => {
         </div>
       </div>}
 
-      <div className="flex-1  overflow-y-auto p-4 space-y-4"
+      <div className={`flex-1  overflow-y-auto p-4 space-y-4 ${videoCall ? "hidden" : ""}`}
         ref={containerRef}  >
 
         {/* {message.length && showLoading ?
@@ -234,7 +236,7 @@ const chatContainer = () => {
           </div>
         )}
       </div>
-
+        {videoCall&& <VideoStream/>}
 
       <MessageInput />
     </div>

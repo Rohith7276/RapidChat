@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import { Image, TvMinimalPlay, Send, X } from "lucide-react";
+import { Image, TvMinimalPlay, Send, X, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
@@ -10,6 +10,8 @@ const MessageInput = () => {
   const {
     selectedUser,
     streamMode,
+    videoCall,
+    setVideoCall,
     setStreamMode,
     streamData,
     streamSet, 
@@ -151,6 +153,11 @@ const MessageInput = () => {
             ref={fileInputRef}
             onChange={handleImageChange}
           />
+
+          <button className={`  btn btn-circle  ${videoCall  ? "text-red-500" : "text-zinc-400"} `} onClick={()=> setVideoCall(!videoCall)} >
+              <Video/>
+
+          </button>
 
           {/* //video stream */}
           <button className={` streamIcon btn btn-circle  ${streamData.length != 0 ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >

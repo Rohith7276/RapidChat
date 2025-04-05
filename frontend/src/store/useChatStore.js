@@ -21,6 +21,9 @@ export const useChatStore = create((set, get) => ({
   pdfScroll: 0,
   pdfCheck: false,
   pdfScrollTop: 0,
+  videoCall: false,
+
+  setVideoCall: (boolval)=> set({videoCall: boolval}),
 
   setStreamYoutube: (boolval) => set({streamYoutube: boolval}),
   setPdfScroll: (scroll) => set({ pdfScroll: scroll }),
@@ -260,6 +263,16 @@ export const useChatStore = create((set, get) => ({
     socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser._id });
 
     socket.on("receiveGroupMessage", (newMessage) => {
+      set({ sidebarRefresh: true })
+      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
+      if (!isMessageSentFromSelectedUser) {
+        return;
+      }
+      set({
+        messages: [...get().messages, newMessage],
+      });
+    })
+    socket.on("recieveGroupVideoCall", (newMessage) => {
       set({ sidebarRefresh: true })
       const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
       if (!isMessageSentFromSelectedUser) {

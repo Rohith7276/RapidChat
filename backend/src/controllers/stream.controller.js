@@ -136,7 +136,7 @@ export const endStream = async (req, res) => {
         if (!friendId) {
             return res.status(400).json({ message: "ID parameter is required" });
         }
-        const friend = await User.findById(friendId);
+        let friend = await User.findById(friendId);
         if (!friend) {
             friend = await Group.findById(friendId)
         }
@@ -176,7 +176,7 @@ export const endStream = async (req, res) => {
         }
         return res.status(200).json(streams);
     } catch (error) {
-        console.error("Error in getStream: ", error.message);
+        console.error("Error in endStream: ", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
 }

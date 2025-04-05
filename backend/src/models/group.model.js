@@ -18,6 +18,10 @@ const groupSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+        videoCall: [{
+            type: String,
+            default: "",
+        }],
         admin: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

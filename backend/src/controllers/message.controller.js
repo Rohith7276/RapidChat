@@ -298,6 +298,7 @@ export const sendMessage = async (req, res) => {
       io.to(receiverSocketId).emit("newMessage", newMessage);
       io.to(receiverSocketId).emit("notification", "newMessage");
     }
+    await client.del('messages'+ req.user._id + req.params.id); 
 
     res.status(201).json(newMessage);
   } catch (error) {

@@ -9,10 +9,11 @@ import YouTubePlayer from "../components/youtubePlayer";
 import PDFReader from "../components/PdfReader";
 import UploadPDF from "../components/UploadFile";
 import { useAuthStore } from "../store/useAuthStore";
+import VideoStream from "../components/VideoStream";
 
 
 const HomePage = () => {
-  const { selectedUser, streamMode, setStreamData, setStreamYoutube, streamYoutube, endStream, streamStart, streamData, createStream } = useChatStore();
+  const { selectedUser, streamMode, setStreamData, videoCall, setStreamYoutube, streamYoutube, endStream, streamStart, streamData, createStream } = useChatStore();
   const { authUser } = useAuthStore();
   const [videoId, setVideoId] = useState("")
   const [title, setTitle] = useState("")
@@ -51,7 +52,7 @@ const HomePage = () => {
       <div className="flex items-center gap-0.5 justify-center pt-20 px-4">
         <div className={`bg-base-100 rounded-l-lg shadow-lg ${streamMode ? "w-[35vw] h-[calc(100vh-6rem)]" : "max-w-7xl h-[calc(100vh-8rem)]"}`}>
           <div className="flex h-full rounded-lg overflow-hidden">
-            <Sidebar />
+            <Sidebar /> 
             {!selectedUser ? <NoChatSelected /> : <ChatContainer />}
           </div>
         </div>

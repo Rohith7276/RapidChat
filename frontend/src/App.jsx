@@ -10,7 +10,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
 import { useEffect } from "react";
-
+import VideStream from "./components/VideoStream";
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 import CreateGroupPage from "./pages/CreateGroupPage";
@@ -18,12 +18,12 @@ import CreateGroupPage from "./pages/CreateGroupPage";
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
   const { theme } = useThemeStore();
- 
+
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
- 
+
 
   if (isCheckingAuth && !authUser)
     return (
@@ -32,21 +32,26 @@ const App = () => {
       </div>
     );
 
+    
+
   return (
     <div data-theme={theme}>
       <Navbar />
 
+
+
       <Routes>
-        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
-        <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
+        <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} /> 
         <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+        <Route path="/signup" element={!authUser ? <SignUpPage /> : <Navigate to="/" />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
-        <Route path="/create-group" element={authUser ?  <CreateGroupPage/> : <Navigate to="/login" />} />
+        <Route path="/create-group" element={authUser ? <CreateGroupPage /> : <Navigate to="/login" />} />
       </Routes>
 
       <Toaster />
     </div>
   );
 };
-export default App;
+export default App;import React, { useState } from 'react';
+ 
