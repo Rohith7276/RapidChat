@@ -3,7 +3,7 @@ import Message from "../models/message.model.js";
 import mongoose from "mongoose"; 
 import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
-import  client  from "../lib/redisClient.js";
+// import  client  from "../lib/redisClient.js";
 
 export const getUsers = async (req, res) => {
   try {
@@ -251,7 +251,7 @@ export const getMessages = async (req, res) => {
       // .limit(page * 100) 
 
     messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
+    // await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
     res.status(200).json(messages);
 
   } catch (error) {
@@ -298,7 +298,7 @@ export const sendMessage = async (req, res) => {
       io.to(receiverSocketId).emit("newMessage", newMessage);
       io.to(receiverSocketId).emit("notification", "newMessage");
     }
-    await client.del('messages'+ req.user._id + req.params.id); 
+    // await client.del('messages'+ req.user._id + req.params.id); 
 
     res.status(201).json(newMessage);
   } catch (error) {

@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 // import { uploadOnCloudinary } from "../lib/cloudinary.js";
 import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js"; 
-import client from "../lib/redisClient.js";
+// import client from "../lib/redisClient.js";
 
 
  

@@ -200,7 +200,7 @@ const chatContainer = () => {
                       {message.type == 'ai' ? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
                     </time>
                   </div>}
-                <div className="chat-bubble flex flex-col">
+                <div className={`chat-bubble  flex flex-col ${message.senderId === authUser._id && message.type!="ai" ? "chat-end bg-primary text-primary-content" : "chat-start"}`}>
                   {message.image && (
                     <img loading="blur"
                       onClick={(e) => handleImageView(e)}
@@ -209,7 +209,7 @@ const chatContainer = () => {
                       className="sm:max-w-[200px] hover:cursor-pointer rounded-md mb-2"
                     />
                   )}
-                  {message.text && <p dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/@rapid/g, '<b style="color: skyblue">$&</b>') }}></p>}
+                  {message.text && <p dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/@rapid/g, '<b >$&</b>') }}></p>}
                 </div>
               </div>}
           </>

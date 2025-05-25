@@ -3,7 +3,6 @@ import { useChatStore } from "../store/useChatStore";
 import { Image, TvMinimalPlay, Send, X, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
-import { formatMessageTime } from "../lib/utils";
 
 const MessageInput = () => {
 
@@ -18,7 +17,6 @@ const MessageInput = () => {
     getStreamAiMessage
   } = useChatStore();
 
-  const [streamHover, setStreamHover] = useState(false)
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
@@ -110,9 +108,6 @@ const MessageInput = () => {
     setText(value);
   }
 
-  const handleStream = () => {
-    setStreamMode(!streamMode)
-  }
 
 
   return (
@@ -154,36 +149,7 @@ const MessageInput = () => {
             onChange={handleImageChange}
           />
 
-          <button className={`  btn btn-circle  ${videoCall  ? "text-red-500" : "text-zinc-400"} `} onClick={()=> setVideoCall(!videoCall)} >
-              <Video/>
-
-          </button>
-
-          {/* //video stream */}
-          <button className={` streamIcon btn btn-circle  ${streamData.length != 0 ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
-            {streamData.length != 0 && <div className=" p-1 z-10 bg-base-content max-w-74 rounded-md  absolute mt-[-11rem] max-h-30 streamInfo text-base-200">
-              <div className="p-2  ">
-
-                <div className="flex gap-1 items-center justify-center flex-col w-full">
-
-                  <h1 className="text-base-50 font-bold text-xl">{streamData?.streamInfo?.title}</h1>
-                  <h1>{streamData?.streamInfo?.description}</h1>
-                </div>
-                <div className="flex gap-2 items-center justify-center ">
-
-                  <h1>Created by  </h1>
-                  <img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" />
-                  <h1> {streamData?.senderInfo?.fullName}</h1>
-                  <h1>
-                    {"on " + new Date(streamData?.createdAt).toDateString() + " at " + formatMessageTime(new Date(streamData?.createdAt))}
-
-                  </h1>
-                </div>
-
-              </div>
-            </div>}
-            <TvMinimalPlay />
-          </button>
+        
 
           <button
             type="button"
