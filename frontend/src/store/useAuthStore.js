@@ -3,7 +3,7 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = "https://rapidchat-10.onrender.com/"
+const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:3000" : import.meta.env.VITE_API_BASE_URL +"/";
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,

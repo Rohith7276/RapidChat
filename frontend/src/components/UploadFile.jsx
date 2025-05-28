@@ -24,7 +24,8 @@ const UploadPDF = ({ onUpload }) => {
         formData.append("pdf", file);
         console.log('selectedUser', selectedUser._id) 
         try {
-            const data  = await axios.post("https://rapidchat-10.onrender.com/upload", formData, {
+            
+            const data  = await axios.post(import.meta.env.VITE_API_BASE_URL + "/upload", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             console.log(data.data)

@@ -3,10 +3,35 @@ import { Group } from "../models/group.model.js";
 import Stream from "../models/stream.model.js";
 import fs from 'fs';
 import path from 'path';
-import { getReceiverSocketId, io } from "../lib/socket.js"; 
+import { getReceiverSocketId, io } from "../lib/socket.js";
 
 
 
+export const getVideoId = async (req, res) => {
+    try {
+        console.log("hello guys")
+        const { friendId, videoId, send } = req.body
+        console.log(friendId, videoId, send)
+        if (send == "1") {
+            const receiverSocketId = getReceiverSocketId(friendId);
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit("takeVideoId", videoId); 
+                console.log("Sent from send 1"+videoId)
+            }
+        }
+        else {
+            const receiverSocketId = getReceiverSocketId(friendId);
+            console.log(receiverSocketId)
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit("giveVideoId"); 
+                console.log("Sent from send 0")
+            }
+        }
+    } catch (error) {
+        console.log("Error in getVideoId controller", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
 
 export const createStream = async (req, res) => {
     try {
@@ -77,8 +102,7 @@ export const streamControls = async (req, res) => {
             friend = await Group.findById(friendId)
         }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
-
-
+        
         const stream = await Stream.findById(streamId);
         const receiverSocketId = getReceiverSocketId(friend._id);
         console.log(userId, friendId)
@@ -160,8 +184,8 @@ export const endStream = async (req, res) => {
         );
 
         if (streams && streams.streamInfo) {
-            const fileUrl = streams.streamInfo.type === "pdf" ? streams.streamInfo.pdfUrl : streams.streamInfo.videoUrl;
-            if (fileUrl) {
+            const fileUrl = streams.streamInfo.type === "pdf" ? streams.streamInfo.pdfUrl : "";
+            if (fileUrl != "") {
                 const filePath = path.resolve('uploads', path.basename(fileUrl));
                 fs.unlink(filePath, (err) => {
                     if (err) {
@@ -169,7 +193,7 @@ export const endStream = async (req, res) => {
                     }
                 });
             }
-        } 
+        }
         const receiverSocketId = getReceiverSocketId(friendId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("stream", streams);

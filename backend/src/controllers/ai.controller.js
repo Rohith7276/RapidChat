@@ -106,7 +106,7 @@ export const streamAi = async (req, res) => {
     res.status(200).json(newMessage);
   }
   catch (error) {
-    console.log("Error in ai summary controller", error?.message);
+    console.log("Error in ai stream controller", error?.message);
     return { message: "Internal Server Error" };
   }
 }

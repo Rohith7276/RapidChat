@@ -1,25 +1,30 @@
 import User from "../models/user.model.js";
-import { Group } from "../models/group.model.js"; 
+import { Group } from "../models/group.model.js";
 import Message from "../models/message.model.js";
 import mongoose from "mongoose";
 // import { uploadOnCloudinary } from "../lib/cloudinary.js";
 import { cloudinary } from "../lib/cloudinary.js";
-import { getReceiverSocketId, io } from "../lib/socket.js"; 
+import { getReceiverSocketId, io } from "../lib/socket.js";
 // import client from "../lib/redisClient.js";
 
 
- 
+
 
 export const createGroup = async (req, res) => {
   try {
     const { name, description, users, profilePic } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile pic is required" });
-    }
+    console.log(name, description, users, profilePic)
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    // if (!profilePic) {
+    //   return res.status(400).json({ message: "Profile pic is required" });
+    // }
+    let uploadResponse = ""
+    if (profilePic) {
+
+      uploadResponse = await cloudinary.uploader.upload(profilePic);
+    }
 
 
     const user = await User.findById(userId);
@@ -43,7 +48,7 @@ export const createGroup = async (req, res) => {
       x.groups.push(group._id);
       await x.save();
     })
-    return res.status(201).json({ updatedGroups: user.groups })
+    return res.status(201).json({ updatedGroups: user.groups, message: "Group created successfully" });
 
   } catch (error) {
 
@@ -62,7 +67,7 @@ export const addUserToGroup = async (req, res) => {
     if (!group) return res.status(404).json({ message: "Group not found" });
     if (group.admin.toString() != user._id.toString()) return res.status(400).json({ message: "User not admin of group" });
     if (group.users.find(u => u.toString() === userId)) return res.status(400).json({ message: "User already in group" });
-    
+
     const updatedGroup = await Group.findByIdAndUpdate(
       groupId,
       {
@@ -125,7 +130,7 @@ export const getGroupMessages = async (req, res) => {
     let messages = await Message.find(
       { groupId }
     )
-    await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
+    // await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
 
     res.status(200).json(messages);
   } catch (error) {
@@ -144,9 +149,9 @@ export const sendGroupMessage = async (req, res) => {
       // Upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
-    } 
+    }
     const user = await User.findById(senderId);
-    const group = await Group.findById(groupId) 
+    const group = await Group.findById(groupId)
     const newMessage = new Message({
       groupId,
       senderId,
@@ -158,7 +163,7 @@ export const sendGroupMessage = async (req, res) => {
         profilePic: user.profilePic
       },
       image: imageUrl
-    }); 
+    });
     await newMessage.save();
     const x = newMessage.toJSON()
 
@@ -166,14 +171,14 @@ export const sendGroupMessage = async (req, res) => {
 
 
     io.to(groupId).emit("receiveGroupMessage", x);
-    
-    for(let i = 0; i < group.members.length; i++){
+
+    for (let i = 0; i < group.members.length; i++) {
       console.log("group id: ", group.members[i].toString());
       let x = getReceiverSocketId(group.members[i].toString());
-       if(x)
-      io.to(x).emit("notification", x);
+      if (x)
+        io.to(x).emit("notification", x);
     }
-    await client.del('messages'+ req.user._id + groupId); 
+    // await client.del('messages' + req.user._id + groupId);
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendGroupMessage controller: ", error.message);

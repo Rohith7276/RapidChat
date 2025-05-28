@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post("/create-group",protectRoute, createGroup)
 router.patch("/remove-user", protectRoute, removeUserFromGroup) 
-router.get("/get-group-messages/:id", protectRoute,  getGroupMessages)
+router.get("/get-group-messages/:id", protectRoute, getGroupMessages)
 router.post("/send-group-message",protectRoute, sendGroupMessage)
 // router.post("/send/:id",protectRoute,sendMessage) // protectRoute ensures that unautheticated user can't access this request.
 // router.patch("/add-friend", protectRoute, addFriend);
