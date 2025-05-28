@@ -8,8 +8,7 @@ console.log("Generated token:", token);
     res.cookie("jwt", token, {
         maxAge: 7 * 24 * 60 * 60 * 1000, // MilliSeconds
         httpOnly: true, // present XSS attecks cross-site scripting attacks
-        sameSite: "strict", // CSRF attacks cross-site request forgery attacks
-        secure: process.env.NODE_ENV !== "development" // https or http
+        sameSite: "Lax", // CSRF attacks cross-site request forgery attacks 
     })
     console.log("This is token")
     return token;
