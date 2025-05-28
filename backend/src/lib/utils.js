@@ -5,11 +5,13 @@ export const generateToken = (userId, res) =>{
         expiresIn:"7d"
     })
 console.log("Generated token:", token);
-    res.cookie("jwt", token, {
-        maxAge: 7 * 24 * 60 * 60 * 1000, // MilliSeconds
-        httpOnly: true, // present XSS attecks cross-site scripting attacks
-        sameSite: "Lax", // CSRF attacks cross-site request forgery attacks 
-    })
+res.cookie("jwt", token, {
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  httpOnly: true,
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  secure: process.env.NODE_ENV === "production", // HTTPS only in production
+});
+
     console.log("This is token")
     return token;
 }
