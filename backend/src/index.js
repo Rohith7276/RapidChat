@@ -37,12 +37,7 @@ app.use(express.urlencoded({extended: true, limit: "50mb"}))
 //this creates a public folder in our server which is used to store files like images and pdf, etc
 app.use(express.static("public"))
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+
 
 
 app.use("/uploads", express.static("uploads")); // Serve uploaded PDFs
