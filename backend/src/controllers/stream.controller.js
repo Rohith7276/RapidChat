@@ -93,6 +93,25 @@ export const createStream = async (req, res) => {
     }
 }
 
+// In Next.js API Route (pages/api/check-url.ts)
+export const checkUrl = async (req, res) => {
+  const url = req.query.url;
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const xfo = response.headers.get('x-frame-options');
+    const csp = response.headers.get('content-security-policy');
+
+    if (xfo || (csp && csp.includes('frame-ancestors'))) {
+      return res.status(400).json({ embeddable: false });
+    }
+
+    return res.status(200).json({ embeddable: true });
+  } catch (error) {
+    return res.status(500).json({ embeddable: false });
+  }
+}
+
+
 export const streamControls = async (req, res) => {
     try {
         const { id: friendId, streamId, action } = req.params;
@@ -155,6 +174,7 @@ export const getStream = async (req, res) => {
 
 export const endStream = async (req, res) => {
     try {
+        console.log("Hi")
         let { id: friendId } = req.params;
         const userId = req.user._id;
         if (!friendId) {

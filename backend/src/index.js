@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import fs from "fs";
 // import Redis from "ioredis";
+
 import pdfParse from "pdf-parse";
 
 // const redis = new Redis({
@@ -22,6 +23,7 @@ import { connectDB } from "./lib/db.js";
 
 import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
+import streamRoutes from "./routes/stream.route.js"
 import groupRoutes from "./routes/groupMessage.route.js";
 import { app, server } from "./lib/socket.js";
 import multer from "multer"; 
@@ -63,7 +65,9 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   // const aiSum = await AiSummary(data.text)
   // console.log(aiSum);
   data = data.text.slice(0, 5980) 
-  res.json({ fileUrl: `https://rapidchat-10.onrender.com/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
+  res.json({ fileUrl: `http://localhost:3000/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
+  // res.json({ fileUrl: `https://rapidchat-1-2442.onrender.com/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
+  // res.json({ fileUrl: `https://rapidchat-10.onrender.com/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
 });
 
 
@@ -71,6 +75,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
+app.use("/api/stream", streamRoutes)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 

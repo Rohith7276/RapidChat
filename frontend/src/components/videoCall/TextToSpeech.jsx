@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useChatStore } from '../store/useChatStore';
+import { useChatStore } from '../../store/useChatStore';
 
 const ElevenLabsTTS = () => {
     const [loading, setLoading] = useState(false);

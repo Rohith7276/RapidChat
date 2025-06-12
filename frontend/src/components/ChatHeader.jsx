@@ -1,21 +1,26 @@
 
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
+import { useStreamStore } from "../store/useStreamStore";
 import { formatMessageTime } from "../lib/utils";
 
 import { Image, TvMinimalPlay, Send, X, Video } from "lucide-react";
 const ChatHeader = () => {
   const {
-    selectedUser,
-    streamMode,
+    selectedUser, 
     videoCall,
-    setVideoCall,
+    setSelectedUser,
+    setVideoCall, 
+    sendMessage, 
+  } = useChatStore();
+  const { 
+    streamMode, 
     setStreamMode,
     streamData,
-    streamSet,
-    sendMessage,
+    streamSet, 
+    setStreamData,
     getStreamAiMessage
-  } = useChatStore();
+  } = useStreamStore();
   const { onlineUsers } = useAuthStore();
 
   const handleStream = () => {
@@ -49,7 +54,7 @@ const ChatHeader = () => {
 
         {/* //video stream */}
         <button className={` streamIcon btn btn-circle  ${streamData.length != 0 ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
-          {streamData.length != 0 && <div className=" p-1 z-10 bg-base-content max-w-74 rounded-md  absolute mt-[-11rem] max-h-30 streamInfo text-base-200">
+          {streamData.length != 0 && <div className=" p-1  bg-base-content max-w-74 rounded-md  absolute z-[100] mt-[10rem] max-h-30 streamInfo text-base-200">
             <div className="p-2  ">
 
               <div className="flex gap-1 items-center justify-center flex-col w-full">
@@ -57,7 +62,7 @@ const ChatHeader = () => {
                 <h1 className="text-base-50 font-bold text-xl">{streamData?.streamInfo?.title}</h1>
                 <h1>{streamData?.streamInfo?.description}</h1>
               </div>
-              <div className="flex gap-2 items-center justify-center ">
+              <div className="flex gap-2 mt-1 items-center opacity-70  justify-center ">
 
                 <h1>Created by  </h1>
                 <img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" />
@@ -73,7 +78,7 @@ const ChatHeader = () => {
           <TvMinimalPlay />
         </button>
         {/* Close button */}
-        <button className="mx-3" onClick={() => { setSelectedUser(null); setStreamData([]) }}>
+        <button className="mx-3 " onClick={() => { setSelectedUser(null); setStreamData([]) }}>
           <X />
         </button>
       </div>

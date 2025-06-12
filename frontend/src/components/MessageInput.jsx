@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useStreamStore } from '../store/useStreamStore';
+
 import { Image, TvMinimalPlay, Send, X, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
@@ -7,15 +9,17 @@ import { useAuthStore } from "../store/useAuthStore";
 const MessageInput = () => {
 
   const {
-    selectedUser,
-    streamMode,
+    selectedUser, 
     videoCall,
-    setVideoCall,
+    setVideoCall, 
+  } = useChatStore();
+  const { 
+    streamMode, 
     setStreamMode,
     streamData,
     streamSet, 
     getStreamAiMessage
-  } = useChatStore();
+  } = useStreamStore();
 
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);

@@ -6,7 +6,7 @@ import { Menu } from 'lucide-react';
 import { LogOut, Settings, User } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Link } from "react-router-dom";
-import CreateGroup from './createGroup';
+import CreateGroup from './CreateGroup.jsx';
 import { useChatStore } from '../store/useChatStore';
 const MenuSection = () => {
     const menuDiv = useRef(null);

@@ -1,4 +1,4 @@
-import axios from "axios";
+ 
 import { axiosInstance } from "../lib/axios";
 // const API = axios.create({
 //   // baseURL: "https://fitnesstrack-vtv1.onrender.com/api/",

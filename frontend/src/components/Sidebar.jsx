@@ -1,11 +1,14 @@
 import { useEffect,  useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useStreamStore } from '../store/useStreamStore';
+
 import { useAuthStore } from "../store/useAuthStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, getNotifications, getStreamCreation, streamMode,  sidebarRefresh, setSidebarRefresh, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
+  const { getUsers, getNotifications, sidebarRefresh, setSidebarRefresh, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
+  const { getStreamCreation, streamMode } = useStreamStore();
 
   const { onlineUsers, authUser } = useAuthStore();
   const [friendId, setFriendId] = useState("");  

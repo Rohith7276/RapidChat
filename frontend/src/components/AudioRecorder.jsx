@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useChatStore } from '../store/useChatStore';
-import TextToSpeech from './TextToSpeech';
+import TextToSpeech from './videoCall/TextToSpeech';
 
 const SpeechToText = () => {
   const [isListening, setIsListening] = useState(false);

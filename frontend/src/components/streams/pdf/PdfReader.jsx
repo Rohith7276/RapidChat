@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { useChatStore } from "../store/useChatStore";
-import { axiosInstance } from "../lib/axios";
-import { useAuthStore } from "../store/useAuthStore";
+import { useStreamStore } from '../../../store/useStreamStore';
+
+import { useChatStore } from "../../../store/useChatStore";
+import { axiosInstance } from "../../../lib/axios";
+import { useAuthStore } from "../../../store/useAuthStore";
 import { Download, Sun } from "lucide-react";
 import { jsPDF } from "jspdf"
 
@@ -20,7 +22,8 @@ const PDFViewer = ({ pdfUrl }) => {
     const [color, setColor] = useState("#111")
     const [bg, setBg] = useState("#f4edd2")
     const pdfRef = useRef(null)
-    const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData, selectedUser } = useChatStore()
+    const { selectedUser } = useChatStore()
+    const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData } = useStreamStore()
     const { authUser } = useAuthStore()
 
     useEffect(() => {
@@ -56,7 +59,7 @@ const PDFViewer = ({ pdfUrl }) => {
 
 
     return (
-        <><div className="flex flex-col items-center justify-center w-full h-full p-4 rounded-lg">
+        <><div className="flex flex-col items-center justify-center w-full h-full px-4 rounded-lg">
             <div
                 ref={pdfRef}
                 className="h-[500px] mx-auto overflow-y-scroll w-[900px] flex flex-col items-center"

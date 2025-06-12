@@ -1,4 +1,5 @@
 import { useChatStore } from "../store/useChatStore";
+import {useStreamStore} from "../store/useStreamStore"
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BotMessageSquare, BrainCircuit } from 'lucide-react';
 import ChatHeader from "./ChatHeader";
@@ -9,7 +10,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { X, TvMinimalPlay } from "lucide-react";
-import VideoStream from "./VideoStream";
+import VideoStream from "./videoCall/VideoStream.jsx";
 const chatContainer = () => {
   const {
     messages,
@@ -19,15 +20,17 @@ const chatContainer = () => {
     subscribeToMessages,
     subscribeToGroup,
     isUserMessageLoading,
-    unsubscribeFromMessages,
+    unsubscribeFromMessages, 
+    videoCall, 
+  } = useChatStore();
+  const { 
     streamSet,
     getStream,
-    setStreamMode,
-    videoCall,
+    setStreamMode, 
     streamMode,
     setStreamData,
     streamData
-  } = useChatStore();
+  } = useStreamStore();
   const prevScrollHeight = useRef(0)
   const prevScrollTop = useRef(0)
   const { ref, inView } = useInView();
@@ -86,7 +89,7 @@ const chatContainer = () => {
 
 
   useEffect(() => {
-    prevScrollHeight.current = containerRef.current.scrollHeight;
+    prevScrollHeight.current = containerRef.current?.scrollHeight;
     prevScrollTop.current = containerRef.current.scrollTop;
     console.log(streamData)
     setMessage(messages)
@@ -104,7 +107,7 @@ const chatContainer = () => {
     if (containerRef.current?.scrollHeight != null && size.current == null) containerRef.current.scrollTop = containerRef.current?.scrollHeight
     else {
       if (containerRef.current) {
-        const newScrollHeight = containerRef.current.scrollHeight;
+        const newScrollHeight = containerRef.current?.scrollHeight;
         containerRef.current.scrollTop = prevScrollTop.current + (newScrollHeight - prevScrollHeight.current);
       }
 
@@ -137,7 +140,7 @@ const chatContainer = () => {
       {imageViewSrc !== "" && <div className=" ">
         <div className="absolute w-screen  h-[100vh] inset-0 bg-black bg-opacity-50 flex justify-center items-center" >
           <img loading="blur" src={imageViewSrc} alt="attachment" className="z-20 max-w-[90%] max-h-[90%] object-contain" />
-          <button className=" bg-[#ffffff14] hover:cursor-pointer hover:bg-black rounded-full p-[4px] z-20 -mt-[74vh] -ml-[2vw]" onClick={() => setImageViewSrc("")}>
+          <button  className=" bg-[#ffffff14] btn hover:cursor-pointer hover:bg-black rounded-full p-[4px] z-20 -mt-[74vh] -ml-[2vw]" onClick={() => setImageViewSrc("")}>
             <X />
           </button>
         </div>
@@ -200,7 +203,7 @@ const chatContainer = () => {
                       {message.type == 'ai' ? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
                     </time>
                   </div>}
-                <div className={`chat-bubble  flex flex-col ${message.senderId === authUser._id && message.type!="ai" ? "chat-end bg-primary text-primary-content" : "chat-start"}`}>
+                <div className={`chat-bubble  flex flex-col ${message.senderId === authUser._id && message.type!="ai" ? "chat-end bg-primary text-primary-content" : "chat-start  text-base-content  bg-base-200 "}`}>
                   {message.image && (
                     <img loading="blur"
                       onClick={(e) => handleImageView(e)}

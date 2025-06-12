@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
-import { useAuthStore } from "./useAuthStore";
-import { io } from "socket.io-client";
+import { useAuthStore } from "./useAuthStore"; 
 
 export const useChatStore = create((set, get) => ({
   messages: [],
@@ -10,23 +9,13 @@ export const useChatStore = create((set, get) => ({
   groups: [],
   selectedUser: null,
   selectedGroup: null,
-  isUsersLoading: true,
-  streamMode: false,
+  isUsersLoading: true, 
   isMessagesLoading: false,
   sidebarRefresh: true,
-  isUserMessageLoading: false,
-  streamData: [],
-  streamSet: false,
-  streamYoutube: false,
-  pdfScroll: 0,
-  pdfCheck: false,
-  pdfScrollTop: 0,
-  videoCall: false,
+  isUserMessageLoading: false, 
 
   setVideoCall: (boolval)=> set({videoCall: boolval}),
-
-  setStreamYoutube: (boolval) => set({streamYoutube: boolval}),
-  setPdfScroll: (scroll) => set({ pdfScroll: scroll }),
+  
   getNotifications: async () => {
     const socket = useAuthStore.getState().socket;
 
@@ -35,46 +24,8 @@ export const useChatStore = create((set, get) => ({
 
     }
     )
-  },
-  getStreamCreation: async () => {
-    const socket = useAuthStore.getState().socket;
-
-    socket.on("stream", async (data) => {
-      if (data.stopTime == null) {
-        set({ streamData: data })
-
-        set({ streamSet: true })
-      }
-      else {
-        set({ streamData: [] })
-
-        set({ streamSet: false })
-      }
-    }
-    )
-    socket.on("streamControls", async (data, stream, userId) => {
-      set({ pdfCheck: !get().pdfCheck })
-      setTimeout(async () => {
-
-        const pdfScroll = get().pdfScroll;
-        const streamData = get().streamData;
-        console.log("data", data)
-        console.log(streamData)
-        if (data == 999999 && streamData?._id == stream._id) {
-          console.log("HI")
-          console.log(pdfScroll)
-          await axiosInstance.get(`/auth/user/stream-control/${userId}/${pdfScroll}/${stream._id}`);
-
-        }
-        else {
-          console.log("Setting pdf Scroll")
-          set({ pdfScrollTop: data })
-        }
-      }, 100);
-    }
-    )
-  },
-
+  }, 
+ 
   getUsers: async () => {
     try {
       const res = await axiosInstance.get("/messages/users");
@@ -96,6 +47,7 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response.data.message);
     }
   },
+
   removeFriend: async (friendId) => {
     try {
       const res = await axiosInstance.patch(`/messages/add-friend/${friendId}`);
@@ -154,26 +106,6 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response.data.message);
     }
   },
-  getStreamAiMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
-    try {
-      let res = {};
-      if (selectedUser.fullName !== undefined) {
-
-        const { streamData } = get();
-        console.log("streamData", streamData)
-        res = await axiosInstance.post(`/messages/stream-ai`, { ...messageData, data: streamData?.streamInfo?.pdfData?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
-      }
-      else
-        res = await axiosInstance.post(`/messages/stream-ai`, { ...messageData, receiverId: null, groupId: selectedUser._id });
-      const newMes = { ...res.data, _id: "1", senderId: "67af8f1706ba3b36e9679f9d", senderInfo: { fullName: "Rapid AI", profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg" } };
-
-      set({ messages: [...messages, newMes] });
-    } catch (error) {
-      toast.error("error in getting stream ai message" + error);
-    }
-  },
-
 
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
@@ -194,6 +126,7 @@ export const useChatStore = create((set, get) => ({
       set({ isUserMessageLoading: false });
     }
   },
+
   sendImage: async (messageData) => {
     const { selectedUser, messages } = get();
 
@@ -205,43 +138,7 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       toast.error(error.response.data.message);
     }
-  },
-
-  createStream: async (data) => {
-    try {
-      const res = await axiosInstance.post("/messages/create-stream", data);
-
-      set({ streamData: res.data });
-
-      toast.success("Stream created successfully" + res.data);
-    }
-    catch (error) {
-      toast.error("Couldn't create the stream");
-    }
-  },
-
-  getStream: async () => {
-    try {
-      const { selectedUser } = get();
-
-      const res = await axiosInstance.get(`/auth/user/get-stream/${selectedUser._id}`)
-
-      if (res.data.length) {
-        console.log("here ", res.data)
-        set({ streamData: res.data[0] })
-      }
-      else {
-        set({ streamData: [] })
-      }
-    }
-    catch (error) {
-      set({ streamData: [] })
-
-    }
-  },
-  streamStart: async () => {
-    console.log("stream start")
-  },
+  }, 
 
   endStream: async () => {
     try {
@@ -254,35 +151,7 @@ export const useChatStore = create((set, get) => ({
 
     }
   },
-
-  subscribeToGroup: () => {
-    const { selectedUser } = get();
-    const socket = useAuthStore.getState().socket;
-    const authUser = useAuthStore.getState().authUser;
-
-    socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser._id });
-
-    socket.on("receiveGroupMessage", (newMessage) => {
-      set({ sidebarRefresh: true })
-      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
-      if (!isMessageSentFromSelectedUser) {
-        return;
-      }
-      set({
-        messages: [...get().messages, newMessage],
-      });
-    })
-    socket.on("recieveGroupVideoCall", (newMessage) => {
-      set({ sidebarRefresh: true })
-      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
-      if (!isMessageSentFromSelectedUser) {
-        return;
-      }
-      set({
-        messages: [...get().messages, newMessage],
-      });
-    })
-  },
+ 
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
@@ -313,8 +182,5 @@ export const useChatStore = create((set, get) => ({
   },
 
   setSelectedUser: (selectedUser) => set({ selectedUser }),
-  setSidebarRefresh: (booleanVal) => set({ sidebarRefresh: booleanVal }),
-  setStreamMode: (booleanVal) => set({ streamMode: booleanVal }),
-  setStreamData: (data) => set({ streamData: data }),
-  setStartStreaming: (booleanVal) => set({ startStreaming: booleanVal }),
+  setSidebarRefresh: (booleanVal) => set({ sidebarRefresh: booleanVal }), 
 }));

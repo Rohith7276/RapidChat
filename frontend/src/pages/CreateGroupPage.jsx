@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useChatStore } from '../store/useChatStore';
 import { useAuthStore } from "../store/useAuthStore";
 import { Camera } from "lucide-react";
-import { X } from 'lucide-react';
+import { X } from 'lucide-react'; 
 
 const CreateGroupPage = () => {
   const { users, createGroup } = useChatStore();
