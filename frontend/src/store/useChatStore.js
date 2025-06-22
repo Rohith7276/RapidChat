@@ -172,7 +172,34 @@ export const useChatStore = create((set, get) => ({
 
     });
   },
+subscribeToGroup: () => { 
+    const { selectedUser } = get();
+    const socket = useAuthStore.getState().socket;
+    const authUser = useAuthStore.getState().authUser;
 
+    socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser._id });
+
+    socket.on("receiveGroupMessage", (newMessage) => {
+      set({ sidebarRefresh: true })
+      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
+      if (!isMessageSentFromSelectedUser) {
+        return;
+      }
+      set({
+        messages: [...get().messages, newMessage],
+      });
+    })
+    socket.on("recieveGroupVideoCall", (newMessage) => {
+      set({ sidebarRefresh: true })
+      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
+      if (!isMessageSentFromSelectedUser) {
+        return;
+      }
+      set({
+        messages: [...get().messages, newMessage],
+      });
+    })
+  }, 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     const { selectedUser } = get();

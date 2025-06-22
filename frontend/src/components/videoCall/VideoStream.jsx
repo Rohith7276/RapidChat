@@ -1,91 +1,118 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Peer from 'peerjs';
+import { BotMessageSquare, Copy, Phone, PhoneOff, Maximize } from 'lucide-react';
 
 const VideoStream = () => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  const [localId, setLocalId] = useState('');
-  const [remoteId, setRemoteId] = useState('');
-  const [status, setStatus] = useState('Waiting to connect...');
-  const [statusColor, setStatusColor] = useState('#fcf8e3');
-  const [callActive, setCallActive] = useState(false);
-
+  const videoContainerRef = useRef(null);
   const peerRef = useRef(null);
   const localStreamRef = useRef(null);
   const currentCallRef = useRef(null);
 
+  const [localId, setLocalId] = useState('');
+  const [remoteId, setRemoteId] = useState('');
+  const [callActive, setCallActive] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize peer connection and local stream
   useEffect(() => {
-    const init = async () => {
+    const initializePeer = async () => {
       try {
         // Get local video stream
-        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideoRef.current.srcObject = localStream;
+        const localStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: 640, height: 480 }, 
+          audio: true 
+        });
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+        }
         localStreamRef.current = localStream;
 
-        // Create peer
+        // Create peer connection
         const peer = new Peer();
         peerRef.current = peer;
 
-        // On peer open
+        // Handle peer connection events
         peer.on('open', (id) => {
           setLocalId(id);
-          setStatus('Ready to connect');
-          setStatusColor('#dff0d8');
+          setIsInitialized(true);
+          console.log('Peer connected with ID:', id);
         });
 
-        // Handle incoming calls
-        peer.on('call', (call) => {
-          setStatus('Incoming call...');
-          setStatusColor('#fcf8e3');
- 
-            call.answer(localStreamRef.current);
-            handleCall(call); 
+        peer.on('call', handleIncomingCall);
+
+        peer.on('error', (error) => {
+          console.error('PeerJS error:', error);
+          handleError(`Connection error: ${error.type}`);
         });
 
-        // Handle errors
-        peer.on('error', (err) => {
-          console.error('PeerJS error:', err);
-          setStatus(`Error: ${err.type}`);
-          setStatusColor('#f2dede');
+        peer.on('disconnected', () => {
+          console.log('Peer disconnected');
         });
-      } catch (err) {
-        console.error('Failed to get local stream', err);
-        setStatus('Error accessing camera/microphone');
-        setStatusColor('#f2dede');
+
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        handleError('Failed to access camera/microphone');
       }
     };
 
-    init();
+    initializePeer();
 
+    // Cleanup on component unmount
     return () => {
-      // Cleanup resources on component unmount
-      if (peerRef.current) {
-        peerRef.current.destroy();
-      }
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      cleanup();
     };
   }, []);
 
-  const handleCall = (call) => {
+  const handleIncomingCall = (call) => {
+    if (!localStreamRef.current) return;
+    
+    console.log('Incoming call received');
+    call.answer(localStreamRef.current);
+    setupCall(call);
+  };
+
+  const setupCall = (call) => {
     currentCallRef.current = call;
     setCallActive(true);
+    setConnecting(false);
 
-    setStatus('Connected');
-    setStatusColor('#dff0d8');
-
-    // Handle stream from remote peer
     call.on('stream', (remoteStream) => {
-      remoteVideoRef.current.srcObject = remoteStream;
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      }
     });
 
-    // Handle call end
     call.on('close', endCall);
-    call.on('error', (err) => {
-      console.error('Call error:', err);
+    call.on('error', (error) => {
+      console.error('Call error:', error);
       endCall();
     });
+  };
+
+  const startCall = async () => {
+    if (!remoteId.trim()) {
+      handleError('Please enter a remote peer ID');
+      return;
+    }
+
+    if (!peerRef.current || !localStreamRef.current) {
+      handleError('Connection not ready');
+      return;
+    }
+
+    try {
+      setConnecting(true);
+      const call = peerRef.current.call(remoteId, localStreamRef.current);
+      setupCall(call);
+    } catch (error) {
+      console.error('Failed to start call:', error);
+      handleError('Failed to start call');
+      setConnecting(false);
+    }
   };
 
   const endCall = () => {
@@ -94,93 +121,191 @@ const VideoStream = () => {
       currentCallRef.current = null;
     }
 
-    remoteVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
     setCallActive(false);
-
-    setStatus('Call ended');
-    setStatusColor('#fcf8e3');
+    setConnecting(false);
   };
 
-  const startCall = () => {
-    if (!remoteId.trim()) {
-      alert('Please enter a remote peer ID');
-      return;
+  const copyIdToClipboard = async () => {
+    if (!localId) return;
+
+    try {
+      await navigator.clipboard.writeText(localId);
+      console.log('ID copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy ID:', error);
+      handleError('Failed to copy ID');
     }
-
-    setStatus('Connecting...');
-    setStatusColor('#fcf8e3');
-
-    const call = peerRef.current.call(remoteId, localStreamRef.current);
-    handleCall(call);
   };
 
-  const copyIdToClipboard = () => {
-    if (localId) {
-      navigator.clipboard.writeText(localId)
-        .then(() => {
-          alert('ID copied to clipboard!');
-        })
-        .catch((err) => {
-          console.error('Failed to copy ID', err);
-        });
+  const handleFullscreen = () => {
+    const element = videoContainerRef.current;
+    if (!element) return;
+
+    const requestFullscreen = element.requestFullscreen ||
+      element.webkitRequestFullscreen ||
+      element.mozRequestFullScreen ||
+      element.msRequestFullscreen;
+
+    if (requestFullscreen) {
+      requestFullscreen.call(element);
     }
+  };
+
+  const handleError = (message) => {
+    console.error(message);
+    // You can replace this with your preferred toast notification
+    alert(message);
+  };
+
+  const cleanup = () => {
+    if (peerRef.current) {
+      peerRef.current.destroy();
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const getCallStatus = () => {
+    if (!isInitialized) return 'Initializing...';
+    if (connecting) return 'Connecting...';
+    if (callActive) return 'Connected';
+    return 'Ready to connect';
   };
 
   return (
-    <div className="container">
-      <h1>Simple Video Calling App</h1>
+    <div className="min-h-screen   p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold  mb-2">
+            <BotMessageSquare className="inline w-8 h-8 mr-2" />
+            RapidStudy Calls
+          </h1>
+          <p className="text-gray-600">
+            Status: <span className="font-semibold">{getCallStatus()}</span>
+          </p>
+        </div>
 
-      <div
-        className="status"
-        style={{ backgroundColor: statusColor, padding: '10px', borderRadius: '4px', textAlign: 'center' }}
-      >
-        {status}
-      </div>
+        {/* Video Container */}
+        <div 
+          ref={videoContainerRef}
+          className="  rounded-lg shadow-lg p-6 mb-6"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Local Video */}
+            <div className="relative">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-64 lg:h-80 bg-gray-900 rounded-lg object-cover"
+              />
+              <div className="absolute bottom-3 left-3 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+                You
+              </div>
+            </div>
 
-      <div className="video-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-        <div className="video-item" style={{ margin: '10px', position: 'relative' }}>
-          <video ref={localVideoRef} autoPlay muted playsInline style={{ width: '100%', borderRadius: '8px' }} />
-          <div className="user-label" style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0, 0, 0, 0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px' }}>
-            You
+            {/* Remote Video */}
+            <div className="relative">
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-64 lg:h-80 bg-gray-900 rounded-lg object-cover"
+              />
+              {!callActive && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-80 rounded-lg">
+                  <div className="text-center text-white">
+                    <BotMessageSquare className="w-12 h-12 mx-auto mb-4 opacity-60" />
+                    <p className="text-lg font-medium">Waiting for connection</p>
+                    <p className="text-sm opacity-80">Enter a peer ID to start calling</p>
+                  </div>
+                </div>
+              )}
+              <div className="absolute bottom-3 left-3 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+                Remote User
+              </div>
+            </div>
           </div>
         </div>
-        <div className="video-item" style={{ margin: '10px', position: 'relative' }}>
-          <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', borderRadius: '8px' }} />
-          <div className="user-label" style={{ position: 'absolute', bottom: '10px', left: '10px', backgroundColor: 'rgba(0, 0, 0, 0.5)', color: 'white', padding: '5px 10px', borderRadius: '4px' }}>
-            Remote User
+
+        {/* Controls */}
+        <div className=" rounded-lg shadow-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Your ID Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Your ID
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={localId}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
+                  placeholder="Generating ID..."
+                />
+                <button
+                  onClick={copyIdToClipboard}
+                  disabled={!localId}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            {/* Remote ID Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Remote User ID
+              </label>
+              <input
+                type="text"
+                value={remoteId}
+                onChange={(e) => setRemoteId(e.target.value)}
+                placeholder="Enter remote user ID"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 mt-6">
+            <button
+              onClick={startCall}
+              disabled={!isInitialized || callActive || connecting || !remoteId.trim()}
+              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Phone className="w-4 h-4" />
+              {connecting ? 'Connecting...' : 'Start Call'}
+            </button>
+
+            <button
+              onClick={endCall}
+              disabled={!callActive}
+              className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <PhoneOff className="w-4 h-4" />
+              End Call
+            </button>
+
+            <button
+              onClick={handleFullscreen}
+              className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-2"
+            >
+              <Maximize className="w-4 h-4" />
+              Fullscreen
+            </button>
           </div>
         </div>
-      </div>
-
-      <div>
-        <p>Your ID: <span>{localId}</span></p>
-        <button onClick={copyIdToClipboard} style={{ margin: '10px', padding: '12px 24px', borderRadius: '50px', backgroundColor: '#2196F3', color: 'white', border: 'none', cursor: 'pointer' }}>
-          Copy ID
-        </button>
-      </div>
-
-      <div>
-        <input
-          type="text"
-          value={remoteId}
-          onChange={(e) => setRemoteId(e.target.value)}
-          placeholder="Enter remote user ID"
-          style={{ padding: '12px', margin: '10px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '16px', width: '300px' }}
-        />
-        <button
-          onClick={startCall}
-          disabled={callActive}
-          style={{ margin: '10px', padding: '12px 24px', borderRadius: '50px', backgroundColor: '#4CAF50', color: 'white', border: 'none', cursor: 'pointer' }}
-        >
-          Start Call
-        </button>
-        <button
-          onClick={endCall}
-          disabled={!callActive}
-          style={{ margin: '10px', padding: '12px 24px', borderRadius: '50px', backgroundColor: '#f44336', color: 'white', border: 'none', cursor: 'pointer' }}
-        >
-          End Call
-        </button>
       </div>
     </div>
   );
