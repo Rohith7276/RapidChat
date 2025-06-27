@@ -30,16 +30,43 @@ io.on("connection", (socket) => {
   if (userId) userSocketMap[userId] = socket.id;
 
 
-    
+
 
   // io.emit() is used to send events to all the connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  
+
+
   socket.on("joinGroup", ({ groupId, userId }) => {
     socket.join(groupId);
     userSocketMap[userId] = socket.id;
     console.log(`User ${userId} joined group ${groupId}`);
   });
+
+  socket.on('get-peer-id', (userId, name) => {
+    console.log("getting peer id");
+      console.log("check this name" , name)
+
+    const requesterSocketId = socket.id;
+    const receiverSocketId = getReceiverSocketId(userId);
+    console.log(requesterSocketId)
+    // Ask the receiver for their peer ID, and pass along who’s asking
+    io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, name);
+  });
+
+  socket.on('send-peer-id', (peerId, requesterSocketId)=>{
+    console.log("data",peerId, requesterSocketId)
+     io.to(requesterSocketId).emit('take-peer-id', peerId)
+  }) 
+  
+  
+
+  // socket.on('send-peer-id-back', ({ toSocketId, peerId }) => {
+  //   io.to(toSocketId).emit('take-peer-id', peerId);
+
+  // });
+
+  // Keep a temp map
+  const pendingPeerIdRequests = {};
 
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.id);

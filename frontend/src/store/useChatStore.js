@@ -189,6 +189,7 @@ subscribeToGroup: () => {
         messages: [...get().messages, newMessage],
       });
     })
+ 
     socket.on("recieveGroupVideoCall", (newMessage) => {
       set({ sidebarRefresh: true })
       const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
