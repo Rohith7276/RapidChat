@@ -61,7 +61,8 @@ const HomePage = () => {
         <div className={`bg-base-100 rounded-l-lg shadow-lg ${streamMode ? "w-[35vw] h-[calc(100vh-6rem)]" : "max-w-7xl h-[calc(100vh-8rem)]"}`}>
           <div className="flex h-full rounded-lg overflow-hidden">
             <Sidebar />
-            {!selectedUser ? <NoChatSelected /> : <ChatContainer />}
+            {/* {!selectedUser ? <NoChatSelected /> : <ChatContainer />} */}
+            <ChatContainer />
           </div>
         </div>
         <div className={`bg-base-100 rounded-r-lg shadow-lg overflow-y-scroll ${streamMode ? "w-[63vw] h-[calc(100vh-6rem)]" : "hidden"}`}>

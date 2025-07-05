@@ -103,6 +103,7 @@ export const getUsers = async (req, res) => {
             {
               $project: {
                 _id: 1,
+                members: 1, 
                 name: 1,
                 profilePic: 1,
                 timeline: { $arrayElemAt: ["$timeline", 0] } 
@@ -153,7 +154,7 @@ export const getMessages = async (req, res) => {
       ],
     })
       .sort({ createdAt: -1 })
-      // .limit(page * 100) 
+      .limit(page * 10) 
 
     messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     //await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });

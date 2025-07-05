@@ -5,14 +5,16 @@ import cors from "cors";
 const app = express();
 const server = http.createServer(app);
 app.use(
-  cors({
-    origin: "http://localhost:5173",
+  cors({ 
+    origin: process.env.CORS_ORIGIN,
+    // origin: "http://localhost:5173",
     credentials: true,
   })
 );
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173"],
+    origin: [process.env.CORS_ORIGIN],
+    // origin: ["http://localhost:5173"],
   },
 });
 
@@ -42,23 +44,34 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} joined group ${groupId}`);
   });
 
-  socket.on('get-peer-id', (userId, name) => {
-    console.log("getting peer id");
-      console.log("check this name" , name)
+  socket.on('get-peer-id', (userId, name, group) => {
+    console.log("getting peer id", group);
 
-    const requesterSocketId = socket.id;
-    const receiverSocketId = getReceiverSocketId(userId);
-    console.log(requesterSocketId)
-    // Ask the receiver for their peer ID, and pass along who’s asking
-    io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, name);
+    if (!group) {
+      const requesterSocketId = socket.id;
+      const receiverSocketId = getReceiverSocketId(userId);
+      console.log(requesterSocketId)
+      // Ask the receiver for their peer ID, and pass along who’s asking
+      io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, name);
+    }
+    else {
+      console.log(userId)
+      const requesterSocketId = socket.id
+      userId.members.forEach(element => {
+        if (element != name._id) { 
+          const receiverSocketId = getReceiverSocketId(element)
+          io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, userId);
+        }
+      });
+    }
   });
 
-  socket.on('send-peer-id', (peerId, requesterSocketId)=>{
-    console.log("data",peerId, requesterSocketId)
-     io.to(requesterSocketId).emit('take-peer-id', peerId)
-  }) 
-  
-  
+  socket.on('send-peer-id', (peerId, requesterSocketId) => {
+    console.log("data", peerId, requesterSocketId)
+    io.to(requesterSocketId).emit('take-peer-id', peerId)
+  })
+
+
 
   // socket.on('send-peer-id-back', ({ toSocketId, peerId }) => {
   //   io.to(toSocketId).emit('take-peer-id', peerId);

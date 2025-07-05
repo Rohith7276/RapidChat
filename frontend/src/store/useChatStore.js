@@ -13,7 +13,9 @@ export const useChatStore = create((set, get) => ({
   isMessagesLoading: false,
   sidebarRefresh: true,
   isUserMessageLoading: false, 
+newMessageFromUser: false,
 
+setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
   setVideoCall: (boolval)=> set({videoCall: boolval}),
   
   getNotifications: async () => {
@@ -82,6 +84,10 @@ export const useChatStore = create((set, get) => ({
       // console.log("stream",stream)
       if (res.data != null)
         set({ messages: res.data });
+       const x = get().newMessageFromUser
+      set({
+        newMessageFromUser: true
+      }) 
       //   set({ streamData: stream.data });
       // }
     } catch (error) {
@@ -109,21 +115,21 @@ export const useChatStore = create((set, get) => ({
 
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
-    set({ isUserMessageLoading: true });
     try {
       let res;
       if (selectedUser.name !== undefined)
         res = await axiosInstance.post(`/groups/send-group-message`, { ...messageData, groupId: selectedUser._id });
       else res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-
+      
       set({ messages: [...messages, res.data] });
+      // set({ isUserMessageLoading: true });
       set({ sidebarRefresh: true })
 
     } catch (error) {
       toast.error(error.response.data.message);
     }
     finally {
-      set({ isUserMessageLoading: false });
+      // set({ isUserMessageLoading: false });
     }
   },
 
@@ -166,6 +172,7 @@ export const useChatStore = create((set, get) => ({
       if (!isMessageSentFromSelectedUser) {
         return;
       }
+     
       set({
         messages: [...get().messages, newMessage],
       });

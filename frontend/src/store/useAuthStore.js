@@ -20,6 +20,9 @@ export const useAuthStore = create((set, get) => ({
   peerId: null,
   friendPeerId: null,
   callerName: null,
+  removePeerId: () => {
+    set({ friendPeerId: null })
+  },
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
@@ -76,11 +79,16 @@ export const useAuthStore = create((set, get) => ({
 
   getPeerId: () => {
     const user = useChatStore.getState().selectedUser;
-    const authUser =  get().authUser
+    const authUser = get().authUser
     const socket1 = get().socket;
 
     console.log("calling");
-    socket1.emit('get-peer-id', user._id, authUser.fullName );
+    if (user.name !== undefined) {
+      socket1.emit('get-peer-id', user, authUser, true);
+
+    }
+    else
+      socket1.emit('get-peer-id', user._id, authUser, false);
 
   },
 
@@ -116,28 +124,33 @@ export const useAuthStore = create((set, get) => ({
     });
 
     socket.on('send-local-peer-id', (data, callback) => {
-    console.log("sending local peer id");
+      console.log("sending local peer id");
 
       const peerId = get().peerId;
       callback(peerId)
- 
+
     });
 
-    socket.on('get-local-peer-id', ( requesterSocketId, name ) => {
-      set({callerName: name})
+    socket.on('get-local-peer-id', (requesterSocketId, name) => {
+      set({ callerName: name.fullName })
+      const setSelectedUser = useChatStore.getState().setSelectedUser
+      const setVideoCall = useChatStore.getState().setVideoCall
+      setSelectedUser({ ...name })
+      setVideoCall(true)
+
       console.log("getting local peer id", requesterSocketId);
-       const peerId = get().peerId
-       console.log("this is peerid", peerId)
+      const peerId = get().peerId
+      console.log("this is peerid", peerId)
       //  callback(peerId)
-    const socket1 = get().socket;
+      const socket1 = get().socket;
 
       socket1.emit('send-peer-id', peerId, requesterSocketId);
- 
-  });
+
+    });
     socket.on('take-peer-id', (data) => {
-    console.log("taking peer id here", data);
-      set({friendPeerId: data})
-  })
+      console.log("taking peer id here", data);
+      set({ friendPeerId: data })
+    })
     const p = new Peer();
     set({ peer: p });
     p.on('open', (id) => {
