@@ -40,7 +40,14 @@ app.use(express.urlencoded({extended: true, limit: "50mb"}))
 app.use(express.static("public"))
 app.use(cookieParser());
 
-
+app.use(
+  cors({ 
+    // origin: process.env.CORS_ORIGIN,
+    origin: "https://rapid-chat-five.vercel.app",
+    // origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
 app.use("/uploads", express.static("uploads")); // Serve uploaded PDFs
 // Multer Storage for PDFs
