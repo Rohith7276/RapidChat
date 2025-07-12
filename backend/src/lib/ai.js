@@ -4,7 +4,7 @@ import Groq from "groq-sdk";
 
 
 export default async function getResponse(input) {
-    const groq = new Groq();
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const chatCompletion = await groq.chat.completions.create({
         "messages": [
             {
