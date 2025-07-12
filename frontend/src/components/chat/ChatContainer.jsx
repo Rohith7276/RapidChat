@@ -10,8 +10,7 @@ import MessageSkeleton from "../skeletons/MessageSkeleton.jsx";
 import { useAuthStore } from "../../store/useAuthStore.js";
 import { formatMessageTime } from "../../lib/utils.js";
 import { X, TvMinimalPlay } from "lucide-react";
-import VideoStream from "../videoCall/VideoStream.jsx";
-import { deleteMessage } from "../../../../backend/src/controllers/message.controller.js";
+import VideoStream from "../videoCall/VideoStream.jsx"; 
 const chatContainer = () => {
   const {
     messages,
@@ -58,17 +57,17 @@ const chatContainer = () => {
 
     getMessages(selectedUser, page);
 
-    if (selectedUser.name === undefined) {
+    if (selectedUser?.name === undefined) {
       subscribeToMessages();
     } else {
       subscribeToGroup();
     }
     return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
+  }, [selectedUser?._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
   useEffect(() => {
     setStreamMode(false)
 
-  }, [selectedUser._id])
+  }, [selectedUser?._id])
 
 
   useEffect(() => {
@@ -180,9 +179,9 @@ const chatContainer = () => {
                       <button className="bg-green-500 text-black rounded-full p-3">
                         <Phone className="w-4 h-4" />
                       </button>
-                      <button onClick={()=> deleteMessage(message._id)} className="bg-red-600 text-black rounded-full p-3">
+                      {/* <button onClick={()=> deleteMessage(message._id)} className="bg-red-600 text-black rounded-full p-3">
                         <PhoneOff className="w-4 h-4" />
-                      </button>
+                      </button> */}
                     </div>
                   :
           <>

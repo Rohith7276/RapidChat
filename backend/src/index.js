@@ -40,14 +40,7 @@ app.use(express.urlencoded({extended: true, limit: "50mb"}))
 app.use(express.static("public"))
 app.use(cookieParser());
 
-app.use(
-  cors({ 
-    // origin: process.env.CORS_ORIGIN,
-    origin: "https://rapid-chat-five.vercel.app",
-    // origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+
 
 app.use("/uploads", express.static("uploads")); // Serve uploaded PDFs
 // Multer Storage for PDFs
@@ -73,7 +66,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   // console.log(aiSum);
   data = data.text.slice(0, 5980) 
   // res.json({ fileUrl: `http://localhost:3000/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
-  res.json({ fileUrl: `https://rapidchat-1-2442.onrender.com/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
+  res.json({ fileUrl: `http://localhost:3000/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
   // res.json({ fileUrl: `https://rapidchat-10.onrender.com/uploads/${req.file.filename}`, fileName: req.file.filename, pdfText: data });
 });
 
