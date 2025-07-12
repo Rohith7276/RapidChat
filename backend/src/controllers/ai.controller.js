@@ -6,13 +6,12 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 import fs from "fs";
 // import pdfParse from "pdf-parse";
 export const AiChat = async (req, res) => {
-  try {
+  try { 
     const { input, receiverId, groupId } = req.body;
     // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
     let text = input
     const response = await getResponse(text);
-
-
+ 
     const newMessage = new Message({
       text: response,
       type: "ai",
@@ -28,14 +27,11 @@ export const AiChat = async (req, res) => {
 
     await newMessage.save();
 
-    let msg = newMessage.toJSON();
-    console.log("hgfdiiiiiii")
-    console.log(groupId)
+    let msg = newMessage.toJSON(); 
     if (groupId == null) {
       const receiverSocketId = getReceiverSocketId(receiverId);
       if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newMessage", msg);
-        console.log("hiiiiiii")
+        io.to(receiverSocketId).emit("newMessage", msg); 
       }
     }
     else {
@@ -59,8 +55,7 @@ export const AiSummary = async (x) => {
 
     // const text = await getYouTubeTranscript(youtubeId)
     const text = x
-    const response = await getResponse("here the notes\n" + text + "\n give me some questions to solve");
-    console.log(response)
+    const response = await getResponse("here the notes\n" + text + "\n give me some questions to solve"); 
     return response;
   }
   catch (error) {
@@ -70,7 +65,7 @@ export const AiSummary = async (x) => {
 }
 
 export const streamAi = async (req, res) => {
-  try {
+  try { 
     const { data, input } = req.body
     const { receiverId, groupId } = req.body;
     // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;

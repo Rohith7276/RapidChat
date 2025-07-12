@@ -75,8 +75,9 @@ const MessageInput = () => {
         text: y,
         image: x,
       });
+      console.log(aiMes)
       if (aiMes.trim() !== "") {
-        if (streamData.length != 0 && streamMode ==false) {
+        if (streamMode ==false) {
 
           await getAiMessage({
             input: aiMes,
