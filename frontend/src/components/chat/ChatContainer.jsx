@@ -253,9 +253,9 @@ const chatContainer = () => {
           </div>
         )}
       </div>
-      {videoCall && <VideoStream />}
+      {videoCall ? <VideoStream />:
 
-      <MessageInput />
+      <MessageInput />}
 
     </div>
   );

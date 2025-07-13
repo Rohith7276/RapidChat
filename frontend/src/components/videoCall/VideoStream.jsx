@@ -361,7 +361,7 @@ const VideoStream = forwardRef(({ stopSound, setIncomingCall, incomingCall }, re
               Fullscreen
             </button>
           </div>
-        </div>
+        </div> 
       </div>
     </div>
   );
