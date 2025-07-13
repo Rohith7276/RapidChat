@@ -91,7 +91,7 @@ setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
       //   set({ streamData: stream.data });
       // }
     } catch (error) {
-      toast.error(error.response?.message || "An error occurred while fetching messages.");
+      console.log(error.response?.message || "An error occurred while fetching messages.");
     } finally {
       set({ isMessagesLoading: false });
     }
