@@ -1,7 +1,8 @@
 import { useChatStore } from "../store/useChatStore";
 import { useState, useEffect } from "react";
+import ScreenShare from "../components/screenShare/ScreenShare.jsx";
 import Sidebar from "../components/Sidebar";
-import { Book, BookA, BotMessageSquare, BrainCircuit, Globe, MoveLeft, X, Youtube } from 'lucide-react';
+import { Book, BookA, BotMessageSquare, BrainCircuit, Globe, MoveLeft, ScreenShareIcon, X, Youtube } from 'lucide-react';
 import WebsiteViewer from "../components/streams/website/WebsiteStream.jsx";
 import NoChatSelected from "../components/chat/NoChatSelected.jsx";
 import ChatContainer from "../components/chat/ChatContainer";
@@ -139,11 +140,17 @@ const HomePage = () => {
                     </div>
                   }
                 </div> :
-                selectStream == 3 && <>
+                selectStream == 3 ? <>
                   <div className="w-full p-8 justify-end flex">
                     <button className=" btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
                   </div>
-                  <WebsiteViewer />
+                  <WebsiteViewer /> 
+                </>:
+                selectStream == 4 && <>
+                  <div className="w-full p-8 justify-end flex">
+                    <button className=" btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
+                  </div> 
+                  <ScreenShare/>
                 </>
             : !startStreaming &&
             <div className="min-h-[70%]">
@@ -185,6 +192,16 @@ const HomePage = () => {
                     className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-green-500 text-white rounded-lg hover:bg-green-700 transition"
                   >
                     <Globe className="size-[5rem]" /> Website
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectStream(4)
+                      setStreamYoutube(false);
+                      setStartStreaming(true);
+                    }}
+                    className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-white text-black rounded-lg hover:bg-gray-200 transition"
+                  >
+                    <ScreenShareIcon className="size-[5rem]" /> Screen share
                   </button>
                 </div>
               </div>

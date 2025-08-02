@@ -200,6 +200,7 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
     const receiverSocketId = getReceiverSocketId(receiverId);
+    console.log(receiverId)
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
       io.to(receiverSocketId).emit("notification", "newMessage");

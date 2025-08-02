@@ -37,7 +37,7 @@ const PDFViewer = ({ pdfUrl }) => {
         setBrightness(localStorage.getItem("brightness") || 50)
         setBg(localStorage.getItem("bg") || "#f4edd2")
         setColor(localStorage.getItem("color") || "#111")
-        setNotes(localStorage.getItem("notes") || "")
+        
         document.documentElement.style.setProperty(
             "--note-text-size",
             `${localStorage.getItem("size") || 16}px`
@@ -192,7 +192,7 @@ const PDFViewer = ({ pdfUrl }) => {
                     }}
                     placeholder="Notes"
                     value={notes}
-                    onChange={(e) => { setNotes(e.target.value); localStorage.setItem("notes", notes) }}
+                    onChange={(e) => { setNotes(e.target.value);   }}
                     className="w-[57vw] rounded-md p-5 text-base-300  text-4xl max-h-full h-[20vh]"
                 ></textarea>
                 <button

@@ -2,7 +2,8 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore"; 
-import { useChatStore } from "./useChatStore";
+import { useChatStore } from "./useChatStore"; 
+
 export const useStreamStore = create((set, get) => ({ 
   streamMode: false, 
   streamData: [],
@@ -56,26 +57,7 @@ export const useStreamStore = create((set, get) => ({
   },
 
  
-  getStreamAiMessage: async (messageData) => {
-    const selectedUser = useChatStore.getState().selectedUser;
-    const messages  = useChatStore.getState().messages;
-    try {
-      let res = {};
-      if (selectedUser.fullName !== undefined) {
-
-        const { streamData } = get();
-        console.log("streamData", streamData)
-        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, data: streamData?.streamInfo?.pdfData?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
-      }
-      else
-        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, receiverId: null, groupId: selectedUser._id });
-      const newMes = { ...res.data, _id: "1", senderId: "67af8f1706ba3b36e9679f9d", senderInfo: { fullName: "Rapid AI", profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg" } };
-
-      set({ messages: [...messages, newMes] });
-    } catch (error) {
-      toast.error("error in getting stream ai message" + error);
-    }
-  },
+  
  
 
   createStream: async (data) => {

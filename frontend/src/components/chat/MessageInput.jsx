@@ -12,13 +12,14 @@ const MessageInput = () => {
     selectedUser, 
     videoCall,
     setVideoCall, 
+    getStreamAiMessage
+
   } = useChatStore();
   const { 
     streamMode, 
     setStreamMode,
     streamData,
     streamSet, 
-    getStreamAiMessage
   } = useStreamStore();
 
   const [text, setText] = useState("");

@@ -4,7 +4,8 @@ import Stream from "../models/stream.model.js";
 import fs from 'fs';
 import path from 'path';
 import { getReceiverSocketId, io } from "../lib/socket.js";
-
+import { cloudinary } from "../lib/cloudinary.js";
+import PdfParse from "pdf-parse";
 
 
 export const getVideoId = async (req, res) => {
@@ -15,15 +16,15 @@ export const getVideoId = async (req, res) => {
         if (send == "1") {
             const receiverSocketId = getReceiverSocketId(friendId);
             if (receiverSocketId) {
-                io.to(receiverSocketId).emit("takeVideoId", videoId); 
-                console.log("Sent from send 1"+videoId)
+                io.to(receiverSocketId).emit("takeVideoId", videoId);
+                console.log("Sent from send 1" + videoId)
             }
         }
         else {
             const receiverSocketId = getReceiverSocketId(friendId);
             console.log(receiverSocketId)
             if (receiverSocketId) {
-                io.to(receiverSocketId).emit("giveVideoId"); 
+                io.to(receiverSocketId).emit("giveVideoId");
                 console.log("Sent from send 0")
             }
         }
@@ -33,8 +34,30 @@ export const getVideoId = async (req, res) => {
     }
 }
 
+export const uploadPdf = async (req, res) => {
+    try { 
+        console.log("upload pdf", req.file)
+        const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: 'raw', // For non-image files like PDFs
+        });
+        
+    const dataBuffer = fs.readFileSync(req.file.path); // Read PDF file
+    const data = await PdfParse(dataBuffer); // Extract text 
+   
+        fs.unlinkSync(req.file.path);
+
+        const pdfUrl = uploadResponse.secure_url;
+        return res.status(201).json({ url: pdfUrl, text: data.text })
+    }
+    catch (err) {
+        console.log(err)
+        return res.status(500).json({ message: "Invalid Document" });
+    }
+}
+
 export const createStream = async (req, res) => {
     try {
+        console.log(req.body)
         let { title, description, pdfUrl, pdfData, videoUrl, groupId, pdfName, recieverId } = req.body;
         const userId = req.user._id;
         const user = await User.findById(userId);
@@ -95,20 +118,20 @@ export const createStream = async (req, res) => {
 
 // In Next.js API Route (pages/api/check-url.ts)
 export const checkUrl = async (req, res) => {
-  const url = req.query.url;
-  try {
-    const response = await fetch(url, { method: 'HEAD' });
-    const xfo = response.headers.get('x-frame-options');
-    const csp = response.headers.get('content-security-policy');
+    const url = req.query.url;
+    try {
+        const response = await fetch(url, { method: 'HEAD' });
+        const xfo = response.headers.get('x-frame-options');
+        const csp = response.headers.get('content-security-policy');
 
-    if (xfo || (csp && csp.includes('frame-ancestors'))) {
-      return res.status(400).json({ embeddable: false });
+        if (xfo || (csp && csp.includes('frame-ancestors'))) {
+            return res.status(400).json({ embeddable: false });
+        }
+
+        return res.status(200).json({ embeddable: true });
+    } catch (error) {
+        return res.status(500).json({ embeddable: false });
     }
-
-    return res.status(200).json({ embeddable: true });
-  } catch (error) {
-    return res.status(500).json({ embeddable: false });
-  }
 }
 
 
@@ -121,7 +144,7 @@ export const streamControls = async (req, res) => {
             friend = await Group.findById(friendId)
         }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
-        
+
         const stream = await Stream.findById(streamId);
         const receiverSocketId = getReceiverSocketId(friend._id);
         console.log(userId, friendId)
@@ -203,17 +226,7 @@ export const endStream = async (req, res) => {
             { new: true }
         );
 
-        if (streams && streams.streamInfo) {
-            const fileUrl = streams.streamInfo.type === "pdf" ? streams.streamInfo.pdfUrl : "";
-            if (fileUrl != "") {
-                const filePath = path.resolve('uploads', path.basename(fileUrl));
-                fs.unlink(filePath, (err) => {
-                    if (err) {
-                        return res.status(500).json({ error: "Error deleting file" });
-                    }
-                });
-            }
-        }
+ 
         const receiverSocketId = getReceiverSocketId(friendId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("stream", streams);

@@ -1,13 +1,13 @@
 import express from "express"
 import { protectRoute } from "../middleware/auth.middleware.js";
-import { checkUrl, endStream, getStream, streamControls } from "../controllers/stream.controller.js";
+import { checkUrl, endStream, getStream, streamControls, uploadPdf } from "../controllers/stream.controller.js";
 import { createStream,  getVideoId } from "../controllers/stream.controller.js"; 
 import {streamAi } from "../controllers/ai.controller.js"
-
+import { upload } from "../middleware/multer.middleware.js"; 
 const router = express.Router()
  
  
-
+router.post("/uploadPdf", protectRoute, upload.single("pdf"), uploadPdf)
 router.get("/get-stream/:id", protectRoute, getStream);
 router.get("/end-stream/:id", protectRoute, endStream);
 router.get("/stream-control/:id/:action/:streamId", protectRoute, streamControls);

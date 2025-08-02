@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useImperativeHandle } from 'react';
 import { forwardRef } from 'react';
-const VideoStream = forwardRef(({ stopSound, setIncomingCall, incomingCall }, ref) => {
+const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const videoContainerRef = useRef(null);
@@ -98,7 +98,7 @@ const VideoStream = forwardRef(({ stopSound, setIncomingCall, incomingCall }, re
   }, [notification]);
 
   const acceptCall = () => {
-    stopSound()
+    // stopSound()
     if (!incomingCall || !localStreamRef.current) return;
     incomingCall.answer(localStreamRef.current);
     setupCall(incomingCall);
@@ -110,7 +110,7 @@ const VideoStream = forwardRef(({ stopSound, setIncomingCall, incomingCall }, re
     rejectCall
   }));
   const rejectCall = () => {
-    stopSound()
+    // stopSound()
     if (incomingCall) {
       const callerId = incomingCall.peer; // The ID of the user who called you
       const conn = peerRef.current?.connect(callerId);

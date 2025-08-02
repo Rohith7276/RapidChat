@@ -30,6 +30,8 @@ export const AiChat = async (req, res) => {
     let msg = newMessage.toJSON(); 
     if (groupId == null) {
       const receiverSocketId = getReceiverSocketId(receiverId);
+      console.log("  ai ", receiverSocketId, receiverId)
+
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("newMessage", msg); 
       }
@@ -69,7 +71,7 @@ export const streamAi = async (req, res) => {
     const { data, input } = req.body
     const { receiverId, groupId } = req.body;
     // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
-   
+   console.log("data = ", data)
 
     const response = await getResponse(input + "\nhere is the pdf text for reference:\n" + data  );
 
@@ -87,12 +89,14 @@ export const streamAi = async (req, res) => {
     });
 
     await newMessage.save();
-
-    let msg = newMessage.toJSON();
+ 
+   
+    let msg = newMessage.toJSON(); 
     if (groupId == null) {
       const receiverSocketId = getReceiverSocketId(receiverId);
+      console.log("stream ai ", receiverSocketId, receiverId)
       if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newMessage", msg);
+        io.to(receiverSocketId).emit("newMessage", msg); 
       }
     }
     else {

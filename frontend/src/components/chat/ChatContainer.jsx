@@ -22,7 +22,10 @@ const chatContainer = () => {
     isUserMessageLoading,
     unsubscribeFromMessages,
     videoCall,
+    setVideoCall
   } = useChatStore();
+  const { peer, peerId,callerName,  getPeerId, friendPeerId } = useAuthStore()
+
   const {
     streamSet,
     getStream,
@@ -31,6 +34,7 @@ const chatContainer = () => {
     setStreamData,
     streamData
   } = useStreamStore();
+  const childRef = useRef(null)
   const prevScrollHeight = useRef(0)
   const prevScrollTop = useRef(0)
   const { ref, inView } = useInView();
@@ -43,6 +47,8 @@ const chatContainer = () => {
   const [message, setMessage] = useState([])
   const [imageViewSrc, setImageViewSrc] = useState("")
   const size = useRef(null)
+
+  const [incomingCall, setIncomingCall] = useState(false)
   useEffect(() => {
     console.log(size.current)
     if (inView && size.current != null) {
@@ -50,24 +56,24 @@ const chatContainer = () => {
     }
   }, [inView]);
 
-
   useEffect(() => {
     size.current = null
     getStream()
-
     getMessages(selectedUser, page);
-
-    if (selectedUser?.name === undefined) {
+    if (selectedUser.name === undefined) {
       subscribeToMessages();
     } else {
       subscribeToGroup();
     }
     return () => unsubscribeFromMessages();
-  }, [selectedUser?._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
+  }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
+
   useEffect(() => {
     setStreamMode(false)
 
-  }, [selectedUser?._id])
+  }, [selectedUser._id])
+
+
 
 
   useEffect(() => {
@@ -82,15 +88,21 @@ const chatContainer = () => {
     }
   }, [isUserMessageLoading]);
 
-  // //Infinite scroll
-  // useEffect(() => {
+  //Infinite scroll
+  useEffect(() => {
+    peer.on('call', (call) => {
+      console.log(call)
+      setVideoCall(true)
 
-  // }, [])
+      setIncomingCall(call)
+    });
+
+  }, [])
 
 
   useEffect(() => {
-    prevScrollHeight.current = containerRef?.current?.scrollHeight;
-    prevScrollTop.current = containerRef?.current?.scrollTop;
+    prevScrollHeight.current = containerRef.current?.scrollHeight;
+    prevScrollTop.current = containerRef.current.scrollTop;
     console.log(streamData)
     setMessage(messages)
   }, [messages]);
@@ -136,7 +148,6 @@ const chatContainer = () => {
 
   return (
     <div className="flex-1 w-[70vw] flex flex-col  overflow-auto">
-
       <ChatHeader />
       {imageViewSrc !== "" && <div className=" ">
         <div className="absolute w-screen  h-[100vh] inset-0 bg-black bg-opacity-50 flex justify-center items-center" >
@@ -172,18 +183,6 @@ const chatContainer = () => {
           </div>
         }
         {message.map((message, index) => (
-<>
-            {message.type == 'call' ?
-                    <div className="fixed top-[9.6vh] left-[50vw] w-[15rem] bg-base-200 p-2 rounded-md h-[3.5rem] flex gap-3 justify-center items-center">
-<h1 className="mx-1">Incomming Call</h1>
-                      <button className="bg-green-500 text-black rounded-full p-3">
-                        <Phone className="w-4 h-4" />
-                      </button>
-                      {/* <button onClick={()=> deleteMessage(message._id)} className="bg-red-600 text-black rounded-full p-3">
-                        <PhoneOff className="w-4 h-4" />
-                      </button> */}
-                    </div>
-                  :
           <>
             {message?.AiStart ? <div
               ref={messageEndRef}
@@ -225,12 +224,11 @@ const chatContainer = () => {
                       className="sm:max-w-[200px] hover:cursor-pointer rounded-md mb-2"
                     />
                   )}
-                  {message.text && <p className="cursor-default " dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/@rapid/g, '<b >$&</b>') }}></p>}
-                
+                  {message.text && <p dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/@rapid/g, '<b >$&</b>') }}></p>}
                 </div>
               </div>}
           </>
-                }</>
+
         ))}
 
         {isUserMessageLoading && (
@@ -253,10 +251,39 @@ const chatContainer = () => {
           </div>
         )}
       </div>
-      {videoCall ? <VideoStream />:
-
-      <MessageInput />}
-
+      {videoCall && <VideoStream ref={childRef} setIncomingCall={setIncomingCall} incomingCall={incomingCall} />}
+      {/* Incoming Call Modal */}
+      {incomingCall && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-lg text-center">
+            <h2 className="text-xl font-bold mb-2">Incoming Call from {callerName}</h2>
+            <p className="mb-4">You have an incoming call. Accept?</p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => {
+                  if (childRef.current) {
+                    childRef.current.acceptCall(); // Call child's function
+                  }
+                }}
+                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+              >
+                <Phone className="w-4 h-4" /> Accept
+              </button>
+              <button
+                onClick={() => {
+                  if (childRef.current) {
+                    childRef.current.rejectCall(); // Call child's function
+                  }
+                }}
+                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+              >
+                <PhoneOff className="w-4 h-4" /> Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <MessageInput />
     </div>
   );
 };

@@ -15,8 +15,8 @@ app.use(
 );
 const io = new Server(server, {
   cors: {
-    origin: [process.env.CORS_ORIGIN],
-    // origin: ["https://rapid-chat-five.vercel.app"],
+    // origin: [process.env.CORS_ORIGIN],
+    origin: ["https://rapid-chat-five.vercel.app"],
     // origin: ["http://localhost:5173"],
   },
 });
@@ -28,12 +28,303 @@ export function getReceiverSocketId(userId) {
 // used to store online users
 const userSocketMap = {}; // {userId: socketId}
 
+const connectedUsers = new Map();
+const activeRooms = new Map();
+
+// Helper function to get user info
+const getUserInfo = (socketId) => {
+  return connectedUsers.get(socketId) || null;
+};
+
+// Helper function to broadcast to room
+const broadcastToRoom = (roomId, event, data, excludeSocketId = null) => {
+  const room = activeRooms.get(roomId);
+  if (room) {
+    room.participants.forEach(participantId => {
+      if (participantId !== excludeSocketId) {
+        io.to(participantId).emit(event, data);
+      }
+    });
+  }
+};
+
+
+
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
   console.log(socket.id)
   const userId = socket.handshake.query.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
+ 
+ connectedUsers.set(socket.id, {
+    id: socket.id,
+    connectedAt: new Date(),
+    isSharing: false,
+    currentRoom: null
+  });
+
+  // Send user their socket ID
+  socket.emit('user-connected', {
+    socketId: socket.id,
+    message: 'Connected successfully'
+  });
+
+  // Handle joining a room for screen sharing
+  socket.on('join-room', (data) => {
+    const { roomId, userName } = data;
+    
+    // Leave previous room if exists
+    const userInfo = getUserInfo(socket.id);
+    if (userInfo && userInfo.currentRoom) {
+      socket.leave(userInfo.currentRoom);
+      
+      // Remove from previous room
+      const prevRoom = activeRooms.get(userInfo.currentRoom);
+      if (prevRoom) {
+        prevRoom.participants = prevRoom.participants.filter(id => id !== socket.id);
+        if (prevRoom.participants.length === 0) {
+          activeRooms.delete(userInfo.currentRoom);
+        }
+      }
+    }
+
+    // Join new room
+    socket.join(roomId);
+    
+    // Update user info
+    connectedUsers.set(socket.id, {
+      ...userInfo,
+      currentRoom: roomId,
+      userName: userName || `User-${socket.id.substr(0, 6)}`
+    });
+
+    // Update room info
+    if (!activeRooms.has(roomId)) {
+      activeRooms.set(roomId, {
+        id: roomId,
+        participants: [],
+        createdAt: new Date()
+      });
+    }
+    
+    const room = activeRooms.get(roomId);
+    if (!room.participants.includes(socket.id)) {
+      room.participants.push(socket.id);
+    }
+
+    // Notify others in room
+    socket.to(roomId).emit('user-joined', {
+      userId: socket.id,
+      userName: connectedUsers.get(socket.id).userName,
+      participants: room.participants.length
+    });
+
+    // Send room info to user
+    socket.emit('room-joined', {
+      roomId: roomId,
+      participants: room.participants.length,
+      otherUsers: room.participants.filter(id => id !== socket.id)
+    });
+
+    console.log(`User ${socket.id} joined room ${roomId}`);
+  });
+
+  // Handle WebRTC offer
+  socket.on('offer', (data) => {
+    const { offer, to } = data;
+    
+    console.log(`Forwarding offer from ${socket.id} to ${to}`);
+    
+    io.to(to).emit('offer', {
+      offer: offer,
+      from: socket.id
+    });
+  });
+
+  // Handle WebRTC answer
+  socket.on('answer', (data) => {
+    const { answer, to } = data;
+    
+    console.log(`Forwarding answer from ${socket.id} to ${to}`);
+    
+    io.to(to).emit('answer', {
+      answer: answer,
+      from: socket.id
+    });
+  });
+
+  // Handle ICE candidates
+  socket.on('ice-candidate', (data) => {
+    const { candidate, to } = data;
+    
+    console.log(`Forwarding ICE candidate from ${socket.id} to ${to}`);
+    
+    io.to(to).emit('ice-candidate', {
+      candidate: candidate,
+      from: socket.id
+    });
+  });
+
+  // Handle screen share request
+  socket.on('screen-share-request', (data) => {
+    const { to } = data;
+    const userInfo = getUserInfo(socket.id);
+    
+    console.log(`Screen share request from ${socket.id} to ${to}`);
+    
+    // Update user status
+    connectedUsers.set(socket.id, {
+      ...userInfo,
+      isSharing: true
+    });
+
+    io.to(to).emit('screen-share-request', {
+      from: socket.id,
+      fromUser: userInfo.userName || `User-${socket.id.substr(0, 6)}`,
+      timestamp: new Date()
+    });
+  });
+
+  // Handle screen share response
+  socket.on('screen-share-response', (data) => {
+    const { accepted, to } = data;
+    const userInfo = getUserInfo(socket.id);
+    
+    console.log(`Screen share response from ${socket.id} to ${to}: ${accepted ? 'accepted' : 'declined'}`);
+    
+    io.to(to).emit('screen-share-response', {
+      accepted: accepted,
+      from: socket.id,
+      fromUser: userInfo.userName || `User-${socket.id.substr(0, 6)}`,
+      timestamp: new Date()
+    });
+  });
+
+  // Handle screen share ended
+  socket.on('screen-share-ended', (data) => {
+    const { to } = data;
+    const userInfo = getUserInfo(socket.id);
+    
+    console.log(`Screen share ended by ${socket.id}`);
+    
+    // Update user status
+    connectedUsers.set(socket.id, {
+      ...userInfo,
+      isSharing: false
+    });
+
+    // Notify specific user or broadcast to room
+    if (to) {
+      io.to(to).emit('screen-share-ended', {
+        from: socket.id,
+        fromUser: userInfo.userName
+      });
+    } else if (userInfo.currentRoom) {
+      socket.to(userInfo.currentRoom).emit('screen-share-ended', {
+        from: socket.id,
+        fromUser: userInfo.userName
+      });
+    }
+  });
+
+  // Handle getting room participants
+  socket.on('get-room-participants', (data) => {
+    const { roomId } = data;
+    const room = activeRooms.get(roomId);
+    
+    if (room) {
+      const participants = room.participants.map(id => {
+        const user = getUserInfo(id);
+        return {
+          id: id,
+          userName: user?.userName || `User-${id.substr(0, 6)}`,
+          isSharing: user?.isSharing || false
+        };
+      });
+
+      socket.emit('room-participants', {
+        roomId: roomId,
+        participants: participants
+      });
+    } else {
+      socket.emit('room-participants', {
+        roomId: roomId,
+        participants: []
+      });
+    }
+  });
+
+  // Handle getting connected users (for direct connection)
+  socket.on('get-connected-users', () => {
+    const users = Array.from(connectedUsers.values())
+      .filter(user => user.id !== socket.id)
+      .map(user => ({
+        id: user.id,
+        userName: user.userName || `User-${user.id.substr(0, 6)}`,
+        isSharing: user.isSharing,
+        connectedAt: user.connectedAt
+      }));
+
+    socket.emit('connected-users', users);
+  });
+
+  // Handle ping for connection health
+  socket.on('ping', () => {
+    socket.emit('pong', {
+      timestamp: new Date(),
+      serverTime: Date.now()
+    });
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', (reason) => {
+    console.log(`User disconnected: ${socket.id}, reason: ${reason}`);
+    
+    const userInfo = getUserInfo(socket.id);
+    
+    // Remove from room if exists
+    if (userInfo && userInfo.currentRoom) {
+      const room = activeRooms.get(userInfo.currentRoom);
+      if (room) {
+        room.participants = room.participants.filter(id => id !== socket.id);
+        
+        // Notify others in room
+        socket.to(userInfo.currentRoom).emit('user-left', {
+          userId: socket.id,
+          userName: userInfo.userName,
+          participants: room.participants.length
+        });
+        
+        // If screen was being shared, notify about end
+        if (userInfo.isSharing) {
+          socket.to(userInfo.currentRoom).emit('screen-share-ended', {
+            from: socket.id,
+            fromUser: userInfo.userName,
+            reason: 'user-disconnected'
+          });
+        }
+        
+        // Clean up empty room
+        if (room.participants.length === 0) {
+          activeRooms.delete(userInfo.currentRoom);
+          console.log(`Room ${userInfo.currentRoom} deleted (empty)`);
+        }
+      }
+    }
+    
+    // Remove from connected users
+    connectedUsers.delete(socket.id);
+  });
+
+  // Error handling
+  socket.on('error', (error) => {
+    console.error(`Socket error for ${socket.id}:`, error);
+    socket.emit('error', {
+      message: 'An error occurred',
+      error: error.message
+    });
+  });
 
 
 
@@ -41,6 +332,10 @@ io.on("connection", (socket) => {
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
 
+  socket.on("getSocketId", (user, socketId) => {
+     const data = getReceiverSocketId(user)
+    io.to(socketId).emit("takeSocketId", data)
+  });
   socket.on("joinGroup", ({ groupId, userId }) => {
     socket.join(groupId);
     userSocketMap[userId] = socket.id;

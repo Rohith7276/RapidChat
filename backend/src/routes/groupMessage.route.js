@@ -1,6 +1,5 @@
 import express from "express";
-import { protectRoute } from "../middleware/auth.middleware.js"; 
-import { upload } from "../middleware/multer.middleware.js";
+import { protectRoute } from "../middleware/auth.middleware.js";  
 
 import {  createGroup, removeUserFromGroup, getGroupMessages, sendGroupMessage } from "../controllers/groupMessage.controller.js";
 // import { CacheMiddleware } from "../middleware/CacheMiddleware.js";

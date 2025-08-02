@@ -1,27 +1,38 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect,useRef, useState } from 'react';
 
-const TypedText = ({ text, speed = 100 }) => {
+const TypedText = ({ texts, speed = 100 }) => {
   const [displayedText, setDisplayedText] = useState('');
-
+  const [textIndex, setTextIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const line = useRef(null)
   useEffect(() => {
-    let index = 0;
-
+    console.log(texts.data)
+    if (texts.data?.length === 0 || texts.length === 0) return;
+    line.current.style.display = "inline"
+    const currentText = texts.data[textIndex];
     const interval = setInterval(() => {
-      setDisplayedText(prev => prev + text.charAt(index));
-      index++;
-
-      if (index === text.length) {
-        clearInterval(interval);
-      }
+      setDisplayedText(prev => prev + currentText.charAt(charIndex));
+      setCharIndex(prevCharIndex => {
+        const nextCharIndex = prevCharIndex + 1;
+        if (nextCharIndex === currentText.length) {
+          setTimeout(() => {
+            setDisplayedText('');
+            setCharIndex(0);
+            setTextIndex((prevTextIndex) => (prevTextIndex + 1) % texts.data.length);
+          }, 1000);
+          clearInterval(interval);
+        }
+        return nextCharIndex;
+      });
     }, speed);
 
     return () => clearInterval(interval);
-  }, [text, speed]);
+  }, [texts, textIndex, charIndex, speed]);
 
   return (
-    <p className="text-[5rem] leading-relaxed">
+    <p className="text-[2rem] leading-relaxed">
       {displayedText}
-      <span className="animate-pulse">|</span>
+      <span ref={line} className="animate-pulse hidden">|</span>
     </p>
   );
 };

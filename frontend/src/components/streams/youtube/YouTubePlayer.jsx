@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useChatStore } from "../../../store/useChatStore";
 import { useStreamStore } from '../../../store/useStreamStore';
-import Loader from '../../../components/Loader';
-import toast from "react-hot-toast";
+
+import Loader from '../../../components/Loader'; 
 const YouTubePlayer = ({ videoId, userId }) => {
   const playerRef = useRef(null);
-  const [pausedTime, setPausedTime] = useState(0);
-  const { streamData } = useStreamStore();
+  const [pausedTime, setPausedTime] = useState(0); 
+    const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData } = useStreamStore()
+
   const [loading, setLoading] = useState(false)
   useEffect(() => {
     setLoading(true)
@@ -78,8 +79,18 @@ const YouTubePlayer = ({ videoId, userId }) => {
     <div>
       {loading ? <Loader /> :
         <>
+                <button
+                        className="bg-base-content text-base-300 p-2 px-3 rounded-md"
+                        onClick={() => {
+                            setStartStreaming(false);
+                            setStreamData([]);
+                            endStream();
+                        }}
+                    >
+                        End Stream
+                    </button>
           <h2 className="flex justify-center items-center my-1"> Video streaming by <span className="ml-2 mr-1"><img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" /></span> <span>{streamData?.senderInfo?.fullName}</span></h2>
-          <div id="player" className="w-[36rem] m-auto h[20rem] overflow-hidden"></div>
+          <div id="player" ref={playerRef} className="w-[36rem] m-auto h[20rem] overflow-hidden"></div>
         </>
       }
     </div>

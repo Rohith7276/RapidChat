@@ -2,12 +2,14 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore"; 
+import { useStreamStore } from "./useStreamStore";
 
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
   groups: [],
   selectedUser: null,
+  selectedUserSocketId: null,
   selectedGroup: null,
   isUsersLoading: true, 
   isMessagesLoading: false,
@@ -15,6 +17,7 @@ export const useChatStore = create((set, get) => ({
   isUserMessageLoading: false, 
 newMessageFromUser: false,
 
+ 
 setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
   setVideoCall: (boolval)=> set({videoCall: boolval}),
   
@@ -75,13 +78,19 @@ setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
 
   getMessages: async (user, page) => {
     if (page == 1) set({ isMessagesLoading: true });
-    try {
+    try { 
       let res
       if (user.fullName === undefined) res = await axiosInstance.get(`/groups/get-group-messages/${user._id}`);
       else res = await axiosInstance.get(`/messages/${user._id}/${page}`);
 
       // const stream = await axiosInstance.get(`/auth/get-stream/${user._id}`);
       // console.log("stream",stream)
+
+      const socket = useAuthStore.getState().socket; 
+
+      socket.emit("getSocketId", user._id, socket.id);
+      console.log("dedo bro", user._id)
+
       if (res.data != null)
         set({ messages: res.data });
        const x = get().newMessageFromUser
@@ -110,6 +119,28 @@ setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
       set({ messages: [...messages, newMes] });
     } catch (error) {
       toast.error(error.response.data.message);
+    }
+  },
+  getStreamAiMessage: async (messageData) => {
+       const { selectedUser, messages } = get();
+
+    try {
+      let res = {};
+      if (selectedUser.fullName !== undefined) {
+
+        const  streamData = useStreamStore.getState().streamData
+        console.log("streamData", streamData)
+        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, data: streamData?.streamInfo?.pdfData?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
+      }
+      else
+        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, receiverId: null, groupId: selectedUser._id });
+ 
+      const newMes = { ...res.data, _id: "1", senderId: "67af8f1706ba3b36e9679f9d", senderInfo: { fullName: "Rapid AI", profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg" } };
+        set({ messages: [...messages, newMes] });
+
+    } catch (error) {
+      console.log(error)
+      toast.error("error in getting stream ai message" + error);
     }
   },
 
@@ -165,6 +196,11 @@ setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
     const socket = useAuthStore.getState().socket;
 
 
+    socket.on('takeSocketId', data=>{
+      set({selectedUserSocketId: data})
+      console.log("lelo bro" , data)
+    })
+
     socket.on("newMessage", (newMessage) => {
       set({ sidebarRefresh: true })
 
@@ -185,6 +221,8 @@ subscribeToGroup: () => {
     const authUser = useAuthStore.getState().authUser;
 
     socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser._id });
+
+    
 
     socket.on("receiveGroupMessage", (newMessage) => {
       set({ sidebarRefresh: true })
