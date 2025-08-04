@@ -16,14 +16,14 @@ import toast from "react-hot-toast";
 
 const HomePage = () => {
   const { selectedUser, videoCall } = useChatStore();
-  const { streamMode, setStreamData, setStreamMode, setStreamYoutube, streamYoutube, endStream, streamStart, streamData, createStream } = useStreamStore();
+  const { streamMode, setStreamData, setStreamMode,startStreaming, setStartStreaming, setStreamYoutube, streamYoutube, endStream, streamStart, streamData, createStream } = useStreamStore();
   const { authUser } = useAuthStore();
   const [videoId, setVideoId] = useState("")
   const [title, setTitle] = useState("")
   const [desc, setDesc] = useState("")
-  const [startStreaming, setStartStreaming] = useState(false)
+  // const [startStreaming, setStartStreaming] = useState(false)
   const [selectStream, setSelectStream] = useState(null)
-  const [startYoutubeStreaming, setStartYoutubeStreaming] = useState(false)
+  // const [startYoutubeStreaming, setStartYoutubeStreaming] = useState(false)
   const [pdfUrl, setPdfUrl] = useState("");
 
   // Function to handle uploaded file path
@@ -44,10 +44,13 @@ const HomePage = () => {
       title,
       description: desc,
       groupId: selectedUser._id,
-      receiverId: selectedUser._id
-    }
+      recieverId: selectedUser._id, 
+      type: "youtube"
+    } 
+    endStream()
     createStream(streamDatas)
-    setStartYoutubeStreaming(true)
+    setStartStreaming(51)
+    // setStartYoutubeStreaming(true)
   }
   useEffect(() => {
     setPdfUrl(streamData?.streamInfo?.pdfUrl)
@@ -68,13 +71,13 @@ const HomePage = () => {
         </div>
         <div className={`bg-base-100 rounded-r-lg shadow-lg overflow-y-scroll ${streamMode ? "w-[63vw] h-[calc(100vh-6rem)]" : "hidden"}`}>
 
-                  {startYoutubeStreaming && <YouTubePlayer videoId={videoId} />}
-          {(startStreaming && !startYoutubeStreaming) ?
+                  {startStreaming == 51 && <YouTubePlayer url={videoId} />}
+          {(startStreaming != 51 && startStreaming != 0  ) ?
 
             selectStream == 1 ?
               <div className="h-full">
                 <div className="w-full p-8 justify-end flex">
-                  <button className=" btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
+                  <button className=" btn" onClick={() => setStartStreaming(0)}><MoveLeft /> </button>
                 </div>
                 <div className={` ${streamData.length == 0 ? "" : ""}  p-4 space-y-4 flex flex-col mx-28  `}>
                   <div className="flex justify-between my-4 mx-1 items-center">
@@ -113,14 +116,8 @@ const HomePage = () => {
               selectStream == 2 ?
                 <div>
 
-                  {streamData.length == 0 ?
-                    <div>
-                      <div className="w-full p-8 justify-end flex">
-                        <button className=" btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
-                      </div>
-                      <UploadPDF onUpload={handleUpload} />
-                    </div>
-                    :
+                  {streamData?.streamInfo?.type == "pdf" ?
+                    
                     <div>
 
                       {/* <h1>{streamData[0]?.streamInfo?.title}</h1>
@@ -133,28 +130,35 @@ const HomePage = () => {
                             {/* <h1>{streamData?.streamInfo?.description}</h1> */}
                           </div>
 
-                          <button className="my-2 mr-8 btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
+                          <button className="my-2 mr-8 btn" onClick={() => setStartStreaming(0)}><MoveLeft /> </button>
                         </div>
                         <PDFReader pdfUrl={pdfUrl} />
                       </div>
                     </div>
+                    :<div>
+                      <div className="w-full p-8 justify-end flex">
+                        <button className=" btn" onClick={() => setStartStreaming(0)}><MoveLeft /> </button>
+                      </div>
+                      <UploadPDF onUpload={handleUpload} /> 
+                    </div>
+                    
                   }
                 </div> :
                 selectStream == 3 ? <>
                   <div className="w-full p-8 justify-end flex">
-                    <button className=" btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
+                    <button className=" btn" onClick={() => setStartStreaming(0)}><MoveLeft /> </button>
                   </div>
                   <WebsiteViewer /> 
                 </>:
                 selectStream == 4 && <>
                   <div className="w-full p-8 justify-end flex">
-                    <button className=" btn" onClick={() => setStartStreaming(false)}><MoveLeft /> </button>
+                    <button className=" btn" onClick={() => setStartStreaming(0)}><MoveLeft /> </button>
                   </div> 
                   <ScreenShare/>
                 </>
             : !startStreaming &&
             <div className="min-h-[70%]">
-              <div className="w-full px-8 mt-8  justify-end flex">
+              <div className="w-full px-8 mt-8 mb-[-6.5rem] justify-end flex">
                 <button className=" btn" onClick={() => setStreamMode(false)}><X /> </button>
               </div>
               <div className="flex flex-col justify-around pt-8  h-full items-center ">
@@ -163,31 +167,38 @@ const HomePage = () => {
                 <div className="flex flex-wrap justify-center py-6 items-center gap-11 ">
                   <button
                     onClick={() => {
-                      setSelectStream(1)
-                      setStreamYoutube(true);
-                      setStartStreaming(true);
+                      if(streamData?.streamInfo?.type == "youtube"){
+                        setVideoId(streamData.streamInfo.videoUrl)
+                        setSelectStream(51)
+                        setStartStreaming(51)
+                      }
+                      else {setSelectStream(1)  
+                      setStartStreaming(1);}
                     }}
-                    className="px-4 py-4 h-[30vh] flex-col justify-center items-center text-3xl w-[15vw] flex gap-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    className={`${streamData?.streamInfo?.type == "youtube" ? "border-2 border-white ": ""} px-4 py-4 h-[30vh] flex-col justify-center items-center text-3xl w-[15vw] flex gap-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition`}
                   >
-                    <Youtube className="size-[5rem]" />
-                    YouTube
-                  </button>
-                  <button
-                    onClick={() => {
-                      setStreamYoutube(false);
-                      setStartStreaming(true);
-                      setSelectStream(2)
+                    {streamData?.streamInfo?.type == "youtube"&& <div className="text-red-600 bg-white px-2 pb-1 rounded-md  font-bold text-lg">Streaming now!</div>}
 
+                    <Youtube className="size-[5rem]" />
+                    
+                    YouTube
+                  </button> 
+                  <button
+                    onClick={() => { 
+                      setStartStreaming(2);
+                      setSelectStream(2)
+                      
                     }}
-                    className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  >
+                    className={`${streamData?.streamInfo?.type == "pdf" ? "border-2 border-white ": ""} px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition`}
+                    >
+                    {streamData?.streamInfo?.type == "pdf"&& <div className="text-red-600 bg-white px-2 pb-1 rounded-md  font-bold text-lg">Streaming now!</div>}
                     <Book className="size-[5rem]" /> PDF
                   </button>
                   <button
                     onClick={() => {
                       setSelectStream(3)
                       setStreamYoutube(false);
-                      setStartStreaming(true);
+                      setStartStreaming(3);
                     }}
                     className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-green-500 text-white rounded-lg hover:bg-green-700 transition"
                   >
@@ -197,9 +208,9 @@ const HomePage = () => {
                     onClick={() => {
                       setSelectStream(4)
                       setStreamYoutube(false);
-                      setStartStreaming(true);
+                      setStartStreaming(4);
                     }}
-                    className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-white text-black rounded-lg hover:bg-gray-200 transition"
+                    className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-[#ededed] text-black rounded-lg hover:bg-gray-200 transition"
                   >
                     <ScreenShareIcon className="size-[5rem]" /> Screen share
                   </button>

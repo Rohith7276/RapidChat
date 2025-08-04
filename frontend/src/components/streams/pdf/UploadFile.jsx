@@ -7,13 +7,13 @@ import { useChatStore } from "../../../store/useChatStore";
 import { useStreamStore } from '../../../store/useStreamStore';
 import { BotMessageSquare, MoveLeft } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAuthStore } from "../../../store/useAuthStore";
+import { useAuthStore } from "../../../store/useAuthStore"; 
 
 const UploadPDF = ({ onUpload }) => {
 
     const [file, setFile] = useState(null);
     const { selectedUser } = useChatStore();
-    const { startStreaming, setStreamData, createStream } = useStreamStore();
+    const { startStreaming, setStreamData, createStream, endStream } = useStreamStore();
     const [videoId, setVideoId] = useState("")
     const [title, setTitle] = useState("")
     const [loading, setLoading] = useState(false)
@@ -31,7 +31,8 @@ const UploadPDF = ({ onUpload }) => {
             formData.append("pdf", file);
             const res = await axiosInstance.post(`/stream/uploadPdf`, formData);
             console.log("deko", res)
-            const uploadData = { title, description: desc, pdfName: title, pdfUrl: res.data.url, groupId: selectedUser._id, recieverId: selectedUser._id, pdfData: res.data.text }
+            const uploadData = { title, description: desc, pdfName: title, pdfUrl: res.data.url, groupId: selectedUser._id, recieverId: selectedUser._id, pdfData: res.data.text, type: "pdf" }
+            endStream()
             createStream(uploadData)
 
         } catch (err) {
@@ -43,8 +44,8 @@ const UploadPDF = ({ onUpload }) => {
     };
 
     return (
-        <div className="flex flex-col items-center space-y-4">
-            <div className={` ${(!startStreaming && !loading )? "block" : "hidden"} p-4 space-y-4 flex flex-col gap-5 `}>
+        <div className="flex flex-col items-center space-y-4"> 
+            <div className={` ${(  !loading )? "block" : "hidden"} p-4 space-y-4 flex flex-col gap-5 `}>
 
                 <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">RapidStudy</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
 

@@ -51,7 +51,6 @@ const WebsiteViewer = () => {
       setSubmittedUrl(formattedUrl);
     } catch (error) {
       toast.error("URL is not embeddable. Please try another.");
-
     }
     finally{
       setLoading(false);

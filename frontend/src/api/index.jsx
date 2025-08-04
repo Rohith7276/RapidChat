@@ -1,9 +1,6 @@
  
 import { axiosInstance } from "../lib/axios";
-// const API = axios.create({
-//   // baseURL: "https://fitnesstrack-vtv1.onrender.com/api/",
-//   baseURL: "http://localhost:3000/api",
-// });
+ 
 
 export const UserSignUp = async (data) => axiosInstance.post("/auth/user/signup", data);
 export const UserSignIn = async (data) => axiosInstance.post("/auth/user/signin", data);

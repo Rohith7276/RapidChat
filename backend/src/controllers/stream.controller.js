@@ -5,8 +5,16 @@ import fs from 'fs';
 import path from 'path';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import { cloudinary } from "../lib/cloudinary.js";
-import PdfParse from "pdf-parse";
+import PdfParse from "pdf-parse"; 
+// import { YoutubeTranscript, YoutubeTranscriptDisabledError, YoutubeTranscriptNotAvailableError } from 'youtube-transcript-plus';
+import {
+    Supadata,
+} from '@supadata/js';
 
+// Initialize the client
+const supadata = new Supadata({
+    apiKey: process.env.youtube,
+});
 
 export const getVideoId = async (req, res) => {
     try {
@@ -35,15 +43,15 @@ export const getVideoId = async (req, res) => {
 }
 
 export const uploadPdf = async (req, res) => {
-    try { 
+    try {
         console.log("upload pdf", req.file)
         const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
             resource_type: 'raw', // For non-image files like PDFs
         });
-        
-    const dataBuffer = fs.readFileSync(req.file.path); // Read PDF file
-    const data = await PdfParse(dataBuffer); // Extract text 
-   
+
+        const dataBuffer = fs.readFileSync(req.file.path); // Read PDF file
+        const data = await PdfParse(dataBuffer); // Extract text 
+
         fs.unlinkSync(req.file.path);
 
         const pdfUrl = uploadResponse.secure_url;
@@ -54,11 +62,11 @@ export const uploadPdf = async (req, res) => {
         return res.status(500).json({ message: "Invalid Document" });
     }
 }
+ 
 
 export const createStream = async (req, res) => {
-    try {
-        console.log(req.body)
-        let { title, description, pdfUrl, pdfData, videoUrl, groupId, pdfName, recieverId } = req.body;
+    try { 
+        let { title, description, pdfUrl, pdfData, videoUrl, groupId, pdfName, recieverId, type } = req.body;
         const userId = req.user._id;
         const user = await User.findById(userId);
         const summary = null;
@@ -67,6 +75,37 @@ export const createStream = async (req, res) => {
 
         if (!groupId && !recieverId) {
             return res.status(400).json({ message: "Either groupId or recieverId is required" });
+        }
+
+        if (type == "youtube") {
+            const transcriptResult = await supadata.transcript({
+                url: videoUrl,
+                // lang: 'en', // optional
+                text: true, // optional: return plain text instead of timestamped chunks
+                mode: 'auto', // optional: 'native', 'auto', or 'generate'
+            });
+
+            // Check if we got a transcript directly or a job ID for async processing
+            if ('jobId' in transcriptResult) {
+                // For large files, we get a job ID and need to poll for results
+                console.log(`Started transcript job: ${transcriptResult.jobId}`);
+
+                // Poll for job status
+                const jobResult = await supadata.transcript.getJobStatus(
+                    transcriptResult.jobId
+                );
+                if (jobResult.status === 'completed') {
+                    console.log('Transcript:', jobResult.result);
+                } else if (jobResult.status === 'failed') {
+                    console.error('Transcript failed:', jobResult.error);
+                } else {
+                    console.log('Job status:', jobResult.status); // 'queued' or 'active'
+                }
+            } else {
+                // For smaller files, we get the transcript directly
+                console.log('Transcript:', transcriptResult.content);
+            }
+            pdfData = transcriptResult.content;
         }
         const group = groupId ? await Group.findById(groupId) : null;
         console.log("ye deko", recieverId)
@@ -79,8 +118,6 @@ export const createStream = async (req, res) => {
             groupId = group?._id
         }
         console.log("hi")
-        let isPdf = "video"
-        if (pdfUrl) isPdf = "pdf"
 
         // console.log(title, description, videoUrl, groupId, recieverId, userId, summary, user.fullName, user.profilePic);
         const stream = await Stream.create({
@@ -88,7 +125,7 @@ export const createStream = async (req, res) => {
             groupId,
             receiverId: recieverId,
             streamInfo: {
-                type: isPdf,
+                type,
                 videoUrl,
                 pdfName,
                 pdfUrl,
@@ -226,7 +263,7 @@ export const endStream = async (req, res) => {
             { new: true }
         );
 
- 
+
         const receiverSocketId = getReceiverSocketId(friendId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("stream", streams);

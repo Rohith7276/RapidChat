@@ -6,10 +6,10 @@ const TypedText = ({ texts, speed = 100 }) => {
   const [charIndex, setCharIndex] = useState(0);
   const line = useRef(null)
   useEffect(() => {
-    console.log(texts.data)
-    if (texts.data?.length === 0 || texts.length === 0) return;
+    console.log(texts?.data)
+    if (texts.data == undefined || texts?.data?.length === 0 || texts?.length === 0) return;
     line.current.style.display = "inline"
-    const currentText = texts.data[textIndex];
+    const currentText = texts?.data[textIndex];
     const interval = setInterval(() => {
       setDisplayedText(prev => prev + currentText.charAt(charIndex));
       setCharIndex(prevCharIndex => {
@@ -18,7 +18,7 @@ const TypedText = ({ texts, speed = 100 }) => {
           setTimeout(() => {
             setDisplayedText('');
             setCharIndex(0);
-            setTextIndex((prevTextIndex) => (prevTextIndex + 1) % texts.data.length);
+            setTextIndex((prevTextIndex) => (prevTextIndex + 1) % texts?.data.length);
           }, 1000);
           clearInterval(interval);
         }

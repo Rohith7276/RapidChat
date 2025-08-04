@@ -3,15 +3,14 @@ import { Monitor, MonitorOff, Users, Wifi, WifiOff, AlertCircle } from 'lucide-r
 import { useAuthStore } from '../../store/useAuthStore';
 import { useChatStore } from '../../store/useChatStore';
 import Loader from '../Loader';
-
 const ScreenShare = ( ) => {
-  const [loading, setLoading] = useState(true)
+   const { socket } = useAuthStore();
+  const { selectedUserSocketId } = useChatStore();
   const [isSharing, setIsSharing] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [error, setError] = useState('');
-  const {socket} = useAuthStore()
-  const {selectedUserSocketId} = useChatStore()
+  
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const peerConnectionRef = useRef(null);
@@ -26,7 +25,7 @@ const ScreenShare = ( ) => {
   };
 
   useEffect(() => {
-    if (!socket || !socket.id) {
+    if (!socket || ! socket.id) {
       setError('Socket or user ID not provided');
       return;
     }
@@ -98,18 +97,18 @@ const ScreenShare = ( ) => {
     };
 
     const handleScreenShareRequest = async (data) => {
-      console.log("screen request")
-      if (window.confirm(`${data.from} wants to share their screen. Accept?`)) {
-        socket.emit('screen-share-response', {
-          accepted: true,
-          to: data.from
-        });
-      } else {
-        socket.emit('screen-share-response', {
-          accepted: false,
-          to: data.from
-        });
-      }
+      console.log("is it confirming?")
+      socket.emit('screen-share-response', {
+        accepted: true,
+        to: data.from
+      });
+      // if (window.confirm(`${data.from} wants to share their screen. Accept?`)) {
+      // } else {
+      //   socket.emit('screen-share-response', {
+      //     accepted: false,
+      //     to: data.from
+      //   });
+      // }
     };
 
     const handleScreenShareResponse = async (data) => {
@@ -130,7 +129,7 @@ const ScreenShare = ( ) => {
     return () => {
       socket.off('offer', handleOffer);
       socket.off('answer', handleAnswer);
-    socket.off('ice-candidate', handleIceCandidate);
+      socket.off('ice-candidate', handleIceCandidate);
       socket.off('screen-share-request', handleScreenShareRequest);
       socket.off('screen-share-response', handleScreenShareResponse);
       
@@ -141,7 +140,7 @@ const ScreenShare = ( ) => {
         localStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [socket, socket.id, selectedUserSocketId]);
+  }, [socket,  socket.id, selectedUserSocketId]);
 
   const createOffer = async () => {
     try {
@@ -194,7 +193,7 @@ const ScreenShare = ( ) => {
       // Send screen share request
       if (selectedUserSocketId) {
         socket.emit('screen-share-request', {
-          from: socket.id,
+          from:  socket.id,
           to: selectedUserSocketId
         });
       } else {
@@ -231,6 +230,7 @@ const ScreenShare = ( ) => {
 
     setIsSharing(false);
     setConnectionStatus('disconnected');
+    window.location.href = "/"
     setError('');
   };
 
@@ -255,7 +255,6 @@ const ScreenShare = ( ) => {
   };
 
   return (
-    loading? <Loader data={["Please wait","Rapid Chat is preparing to share screen" ]} />:
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center gap-2">
@@ -264,7 +263,7 @@ const ScreenShare = ( ) => {
         </h2>
         
         <div className="flex items-center gap-4 text-sm text-gray-600">
-          <span>User ID: <code className="bg-gray-100 px-2 py-1 rounded">{socket.id}</code></span>
+          <span>User ID: <code className="bg-gray-100 px-2 py-1 rounded">{ socket.id}</code></span>
           {selectedUserSocketId && (
             <span>Target: <code className="bg-gray-100 px-2 py-1 rounded">{selectedUserSocketId}</code></span>
           )}
@@ -289,7 +288,7 @@ const ScreenShare = ( ) => {
             <h3 className="text-lg font-semibold text-gray-700">Your Screen</h3>
             <button
               onClick={isSharing ? stopSharing : startSharing}
-              disabled={!socket || !socket.id}
+              disabled={!socket || ! socket.id}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                 isSharing
                   ? 'bg-red-500 hover:bg-red-600 text-white'

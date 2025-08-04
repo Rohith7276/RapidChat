@@ -41,8 +41,8 @@ const streamSchema = new mongoose.Schema(
             },
             type: {
                 type: String, 
-                enum: ["video", "pdf"],
-                default: "video"
+                enum: ["youtube", "pdf"],
+                default: "youtube"
             },
             title: {
                 type: String, 

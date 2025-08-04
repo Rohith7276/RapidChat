@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@supadata/js": "^1.2.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
@@ -28,7 +29,8 @@
     "redis": "^4.7.0",
     "socket.io": "^4.8.1",
     "youtube-transcript": "^1.2.1",
-    "youtube-transcript-api": "^1.1.2"
+    "youtube-transcript-api": "^1.1.2",
+    "youtube-transcript-plus": "^1.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
