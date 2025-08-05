@@ -70,9 +70,12 @@ export const createStream = async (req, res) => {
         const userId = req.user._id;
         const user = await User.findById(userId);
         const summary = null;
+        console.log("user?")
         if (!user) return res.status(404).json({ message: "User not found" });
+        console.log("videoUrl or pdfurl?")
         if (!videoUrl && !pdfUrl) return res.status(400).json({ message: "Any one url is required" });
-
+        
+        console.log("recieverid?")
         if (!groupId && !recieverId) {
             return res.status(400).json({ message: "Either groupId or recieverId is required" });
         }
