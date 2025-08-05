@@ -142,6 +142,7 @@ export const createStream = async (req, res) => {
             },
             summary
         });
+        console.log('stream?')
         if (!stream) return res.status(400).json({ message: "Stream not created" });
         const receiverSocketId = getReceiverSocketId(recieverId);
         if (receiverSocketId) {
