@@ -4,11 +4,14 @@ import { useStreamStore } from '../../../store/useStreamStore';
 import toast from "react-hot-toast";
 import { axiosInstance } from "../../../lib/axios";
 import { useAuthStore } from "../../../store/useAuthStore";
-import { BotMessageSquare } from "lucide-react";
+import { BotMessageSquare, MoveLeft } from 'lucide-react';
+
 import Loader from "../../Loader";
+import { useNavigate, Link } from "react-router-dom";
 
 const WebsiteViewer = () => {
   const [url, setUrl] = useState('');
+    const navigate = useNavigate()
 
   const [submittedUrl, setSubmittedUrl] = useState('');
   const webRef = useRef(null)
@@ -52,25 +55,25 @@ const WebsiteViewer = () => {
     } catch (error) {
       toast.error("URL is not embeddable. Please try another.");
     }
-    finally{
+    finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center gap-4 p-6">
-
+      <div className="w-full px-8  justify-end flex">
+        <Link className=" btn" to='/stream'><MoveLeft /> </Link>
+      </div>
       {submittedUrl ? (
-        <div className="w-full max-w-4xl h-[75vh] border border-gray-300 rounded-lg overflow-hidden shadow-md">
+        <div className="w-full  max-w-4xl h-[75vh] border border-gray-300 rounded-lg overflow-hidden shadow-md">
           <iframe
             ref={webRef}
             src={submittedUrl}
             title="Website Preview"
             className="w-full h-full"
-            onError={() => {
-              console.log("wtf")
-              toast.error("URL is not working/valid. Please try another URL.");
-              setStartStreaming(false);
+            onError={() => { 
+              toast.error("URL is not working/valid. Please try another URL."); 
               setStreamData([]);
               endStream();
             }}
@@ -103,7 +106,7 @@ const WebsiteViewer = () => {
       )
 
         : <>
-          <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">RapidStudy</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
+          <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">Stream N Chat</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
           <form onSubmit={handleSubmit} className="flex flex-col my-4 gap-2 w-full max-w-md">
 
             <input
@@ -121,7 +124,7 @@ const WebsiteViewer = () => {
               Load
 
             </button>
-      {loading &&  <Loader /> }
+            {loading && <Loader />}
           </form>
         </>
 

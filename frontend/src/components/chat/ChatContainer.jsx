@@ -1,7 +1,7 @@
 import { useChatStore } from "../../store/useChatStore.js";
 import { useStreamStore } from "../../store/useStreamStore.js"
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BotMessageSquare, BrainCircuit, Phone, PhoneOff } from 'lucide-react';
+import { BotMessageSquare, BrainCircuit, ChevronDown, MoveDown, MoveDownIcon, Phone, PhoneOff } from 'lucide-react';
 import ChatHeader from "./ChatHeader.jsx";
 import { useInView } from "react-intersection-observer";
 import Loader from "../Loader.jsx"
@@ -10,7 +10,7 @@ import MessageSkeleton from "../skeletons/MessageSkeleton.jsx";
 import { useAuthStore } from "../../store/useAuthStore.js";
 import { formatMessageTime } from "../../lib/utils.js";
 import { X, TvMinimalPlay } from "lucide-react";
-import VideoStream from "../videoCall/VideoStream.jsx"; 
+import VideoStream from "../videoCall/VideoStream.jsx";
 const chatContainer = () => {
   const {
     messages,
@@ -24,7 +24,7 @@ const chatContainer = () => {
     videoCall,
     setVideoCall
   } = useChatStore();
-  const { peer, peerId,callerName,  getPeerId, friendPeerId } = useAuthStore()
+  const { peer, peerId, callerName, getPeerId, friendPeerId } = useAuthStore()
 
   const {
     streamSet,
@@ -37,6 +37,7 @@ const chatContainer = () => {
   const childRef = useRef(null)
   const prevScrollHeight = useRef(0)
   const prevScrollTop = useRef(0)
+  const [MoveDown, setMoveDown] = useState(false)
   const { ref, inView } = useInView();
   const [showLoading, setShowLoading] = useState(true)
   const { authUser } = useAuthStore();
@@ -48,9 +49,22 @@ const chatContainer = () => {
   const [imageViewSrc, setImageViewSrc] = useState("")
   const size = useRef(null)
 
-  const [incomingCall, setIncomingCall] = useState(false)
+  const scrollToBottom = () => { 
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+  
+  const handleScroll = () => {
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const isAtBottom = Math.floor(scrollHeight- scrollTop) == clientHeight; 
+    setMoveDown(!isAtBottom);
+  };
+
   useEffect(() => {
-    console.log(size.current)
+    scrollToBottom(); // auto scroll to bottom on mount
+  }, []);
+
+  const [incomingCall, setIncomingCall] = useState(false)
+  useEffect(() => { 
     if (inView && size.current != null) {
       setPage(page + 1)
     }
@@ -90,8 +104,7 @@ const chatContainer = () => {
 
   //Infinite scroll
   useEffect(() => {
-    peer.on('call', (call) => {
-      console.log(call)
+    peer.on('call', (call) => { 
       setVideoCall(true)
 
       setIncomingCall(call)
@@ -101,9 +114,10 @@ const chatContainer = () => {
 
 
   useEffect(() => {
+    if(chatContainer.current){
     prevScrollHeight.current = containerRef.current?.scrollHeight;
-    prevScrollTop.current = containerRef.current.scrollTop;
-    console.log(streamData)
+    prevScrollTop.current = containerRef.current?.scrollTop;
+  } 
     setMessage(messages)
   }, [messages]);
 
@@ -159,7 +173,7 @@ const chatContainer = () => {
       </div>}
 
       <div className={`flex-1  overflow-y-auto p-4 space-y-4 ${videoCall ? "hidden" : ""}`}
-        ref={containerRef}  >
+        ref={containerRef} onScroll={handleScroll}  >
 
         {/* {message.length && showLoading ?
           <section className="flex justify-center items-center w-full">
@@ -179,7 +193,7 @@ const chatContainer = () => {
             <div className="size-11 mx-2 rounded-lg bg-primary/10 flex items-center justify-center">
               <BotMessageSquare className="w-6 h-6 text-primary " />
             </div>
-            <h1 className="font-bold text-2xl">RapidStudy! </h1>
+            <h1 className="font-bold text-2xl">Stream N Chat! </h1>
           </div>
         }
         {message.map((message, index) => (
@@ -250,6 +264,9 @@ const chatContainer = () => {
             </div>
           </div>
         )}
+      </div>
+      <div className="w-full z-[100]  flex justify-end">
+        <button onClick={scrollToBottom} className={`${MoveDown? "block": "hidden"}  bg-base-300 h-fit p-2 rounded-md w-fit mt-[-3rem] mr-8`}><ChevronDown /></button>
       </div>
       {videoCall && <VideoStream ref={childRef} setIncomingCall={setIncomingCall} incomingCall={incomingCall} />}
       {/* Incoming Call Modal */}

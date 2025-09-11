@@ -3,9 +3,10 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useChatStore } from "../../store/useChatStore";
 import { useStreamStore } from "../../store/useStreamStore";
 import { formatMessageTime } from "../../lib/utils";
-
+import { useNavigate } from "react-router-dom";
 import { Image, TvMinimalPlay, Send, X, Video } from "lucide-react";
 const ChatHeader = () => {
+  const navigate = useNavigate()
   const {
     selectedUser, 
     videoCall,
@@ -24,7 +25,15 @@ const ChatHeader = () => {
   const { onlineUsers } = useAuthStore();
 
   const handleStream = () => {
-    setStreamMode(!streamMode)
+    console.log(window.location.pathname)
+    if(window.location.pathname.slice(0, 7) == "/stream" && streamMode){
+      setStreamMode(false)
+      navigate("/")
+    }
+    else {
+      setStreamMode(true)
+      navigate("/stream")
+    }
   }
   return (
     <div className="p-2.5 border-b border-base-300">

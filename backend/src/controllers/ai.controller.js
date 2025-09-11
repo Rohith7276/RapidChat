@@ -46,7 +46,7 @@ export const AiChat = async (req, res) => {
   }
 }
 
-// export const AiSummary = async(youtubeUrl, pdfData)=>{
+// export const AiSummary = async(youtubeUrl, data)=>{
 export const AiSummary = async (x, isPdf) => {
   try {
     if (!isPdf) {
@@ -77,7 +77,7 @@ export const streamAi = async (req, res) => {
     // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
     console.log("data = ", data)
 
-    const response = await getResponse("Hey you are rapid ai and user asks: \"" +input + "\"\n and here is the information for reference:\n" + data + "\n please answer the user query.");
+    const response = await getResponse( input + "\"\n and here is the data for reference:\n" + data );
 
     const newMessage = new Message({
       text: response,

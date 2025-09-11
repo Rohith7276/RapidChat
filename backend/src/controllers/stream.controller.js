@@ -54,8 +54,8 @@ export const uploadPdf = async (req, res) => {
 
         fs.unlinkSync(req.file.path);
 
-        const pdfUrl = uploadResponse.secure_url;
-        return res.status(201).json({ url: pdfUrl, text: data.text })
+        const url = uploadResponse.secure_url;
+        return res.status(201).json({ url: url, text: data.text })
     }
     catch (err) {
         console.log(err)
@@ -66,23 +66,20 @@ export const uploadPdf = async (req, res) => {
 
 export const createStream = async (req, res) => {
     try { 
-        let { title, description, pdfUrl, pdfData, videoUrl, groupId, pdfName, recieverId, type } = req.body;
+        let { title, description, url, data,  groupId, name, recieverId, type } = req.body;
         const userId = req.user._id;
         const user = await User.findById(userId);
-        const summary = null;
-        console.log("user?")
-        if (!user) return res.status(404).json({ message: "User not found" });
-        console.log("videoUrl or pdfurl?")
-        if (!videoUrl && !pdfUrl) return res.status(400).json({ message: "Any one url is required" });
-        
-        console.log("recieverid?")
+        const summary = null; 
+        if (!user) return res.status(404).json({ message: "User not found" }); 
+        if (!url) return res.status(400).json({ message: "Any one url is required" });
+         
         if (!groupId && !recieverId) {
             return res.status(400).json({ message: "Either groupId or recieverId is required" });
         }
 
         if (type == "youtube") {
             const transcriptResult = await supadata.transcript({
-                url: videoUrl,
+                url: url,
                 // lang: 'en', // optional
                 text: true, // optional: return plain text instead of timestamped chunks
                 mode: 'auto', // optional: 'native', 'auto', or 'generate'
@@ -108,10 +105,10 @@ export const createStream = async (req, res) => {
                 // For smaller files, we get the transcript directly
                 console.log('Transcript:', transcriptResult.content);
             }
-            pdfData = transcriptResult.content;
+            data = transcriptResult.content;
         }
-        const group = groupId ? await Group.findById(groupId) : null;
-        console.log("ye deko", recieverId)
+        const group = groupId ? await Group.findById(groupId) : null; 
+
         if (!group) {
             groupId = ""
             const receiver = await User.findById(recieverId);
@@ -119,20 +116,17 @@ export const createStream = async (req, res) => {
         }
         else {
             groupId = group?._id
-        }
-        console.log("hi")
-
-        // console.log(title, description, videoUrl, groupId, recieverId, userId, summary, user.fullName, user.profilePic);
+        } 
+ 
         const stream = await Stream.create({
             streamerId: userId,
             groupId,
             receiverId: recieverId,
             streamInfo: {
-                type,
-                videoUrl,
-                pdfName,
-                pdfUrl,
-                pdfData,
+                type, 
+                name,
+                url,
+                data,
                 title,
                 description
             },
@@ -142,7 +136,7 @@ export const createStream = async (req, res) => {
             },
             summary
         });
-        console.log('stream?')
+       
         if (!stream) return res.status(400).json({ message: "Stream not created" });
         const receiverSocketId = getReceiverSocketId(recieverId);
         if (receiverSocketId) {
@@ -156,8 +150,7 @@ export const createStream = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 }
-
-// In Next.js API Route (pages/api/check-url.ts)
+ 
 export const checkUrl = async (req, res) => {
     const url = req.query.url;
     try {

@@ -279,7 +279,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold  mb-2">
             <BotMessageSquare className="inline w-8 h-8 mr-2" />
-            RapidStudy Calls
+            Stream N Chat Calls
           </h1>
           <p className="text-gray-600">
             <span className="font-semibold">{getCallStatus()}</span>

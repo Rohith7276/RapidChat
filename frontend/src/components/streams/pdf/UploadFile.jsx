@@ -5,12 +5,15 @@ import Loader from "../../Loader";
 import { axiosInstance } from "../../../lib/axios";
 import { useChatStore } from "../../../store/useChatStore";
 import { useStreamStore } from '../../../store/useStreamStore';
-import { BotMessageSquare, MoveLeft } from "lucide-react";
+import { Book, BookA, BotMessageSquare, BrainCircuit, Globe, MoveLeft, ScreenShareIcon, X, Youtube } from 'lucide-react';
+
 import toast from "react-hot-toast";
-import { useAuthStore } from "../../../store/useAuthStore"; 
+import { useAuthStore } from "../../../store/useAuthStore";
+import { useNavigate, Link } from "react-router-dom";
 
-const UploadPDF = ({ onUpload }) => {
+const UploadPDF = () => {
 
+    const navigate = useNavigate()
     const [file, setFile] = useState(null);
     const { selectedUser } = useChatStore();
     const { startStreaming, setStreamData, createStream, endStream } = useStreamStore();
@@ -31,10 +34,12 @@ const UploadPDF = ({ onUpload }) => {
             formData.append("pdf", file);
             const res = await axiosInstance.post(`/stream/uploadPdf`, formData);
             console.log("deko", res)
-            const uploadData = { title, description: desc, pdfName: title, pdfUrl: res.data.url, groupId: selectedUser._id, recieverId: selectedUser._id, pdfData: res.data.text, type: "pdf" }
+            const uploadData = { title, description: desc, name: title, url: res.data.url, groupId: selectedUser._id, recieverId: selectedUser._id, data: res.data.text, type: "pdf" }
             endStream()
-            createStream(uploadData)
+            createStream(uploadData).then(res =>
 
+                navigate("/stream/file")
+            )
         } catch (err) {
             toast.error("File upload failed");
         }
@@ -44,10 +49,12 @@ const UploadPDF = ({ onUpload }) => {
     };
 
     return (
-        <div className="flex flex-col items-center space-y-4"> 
-            <div className={` ${(  !loading )? "block" : "hidden"} p-4 space-y-4 flex flex-col gap-5 `}>
-
-                <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">RapidStudy</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
+        <div className="flex flex-col items-center space-y-4">
+                <div className="w-full p-8  justify-end flex">
+                    <Link className=" btn" to='/stream'><MoveLeft /> </Link>
+                </div>
+            <div className={` ${(!loading) ? "block" : "hidden"} p-4 space-y-4 flex flex-col gap-5 `}>
+                <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">Stream N Chat</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
 
                 <input
                     type="text"

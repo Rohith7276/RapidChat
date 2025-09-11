@@ -14,7 +14,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 
 
-const PDFViewer = ({ pdfUrl }) => {
+const PDFViewer = ( ) => {
+ 
     const [numPages, setNumPages] = useState(null);
     // Removed unused scroll state
     const [brightness, setBrightness] = useState(100)
@@ -34,6 +35,7 @@ const PDFViewer = ({ pdfUrl }) => {
     }, [pdfCheck]);
 
     useEffect(() => {
+        console.log(streamData)
         setBrightness(localStorage.getItem("brightness") || 50)
         setBg(localStorage.getItem("bg") || "#f4edd2")
         setColor(localStorage.getItem("color") || "#111")
@@ -66,7 +68,7 @@ const PDFViewer = ({ pdfUrl }) => {
             >
                 <div className="w-full p-2" style={{ filter: `brightness(${brightness}%)` }}>
                     <Document
-                        file={pdfUrl}
+                        file={streamData?.streamInfo?.url}
                         onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                         className="w-full"
                     >
@@ -88,7 +90,7 @@ const PDFViewer = ({ pdfUrl }) => {
                 </div>
             </div>
             <div className="flex justify-between w-full px-11 items-center mt-4">
-                {streamData.senderInfo.fullName !== authUser?.fullName && (
+                {streamData?.senderInfo?.fullName !== authUser?.fullName && (
                     <button
                         className="bg-base-content text-base-300 p-2 px-3 rounded-md"
                         onClick={async () => {
@@ -114,7 +116,7 @@ const PDFViewer = ({ pdfUrl }) => {
                 )}
                 <button
                     onClick={() => {
-                        fetch(pdfUrl)
+                        fetch(streamData?.streamInfo?.url)
                             .then((response) => response.blob())
                             .then((blob) => {
                                 const link = document.createElement("a");

@@ -27,22 +27,19 @@ const streamSchema = new mongoose.Schema(
             }
         }, 
         streamInfo: {
-            videoUrl: {
+             
+            url: {
                 type: String, 
             },
-            pdfUrl: {
-                type: String, 
-            },
-            pdfName: {
+            name: {
                 type: String,
             },
-            pdfData: {
+            data: {
                 type: String, 
             },
             type: {
                 type: String, 
-                enum: ["youtube", "pdf"],
-                default: "youtube"
+                enum: ["youtube", "pdf", "website"], 
             },
             title: {
                 type: String, 
@@ -50,11 +47,7 @@ const streamSchema = new mongoose.Schema(
             description:{
                 type: String, 
             }            
-        },
-        stopTime: {
-            type: Date,
-            default: null
-        },
+        }, 
         summary: {
             type: String,
         }

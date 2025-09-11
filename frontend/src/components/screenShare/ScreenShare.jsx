@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Monitor, MonitorOff, Users, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { Monitor, MonitorOff, Users, Wifi, WifiOff, AlertCircle, Fullscreen, MicOff, PhoneOff } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useChatStore } from '../../store/useChatStore';
 import Loader from '../Loader';
@@ -281,11 +281,11 @@ const ScreenShare = ( ) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className=" ">
         {/* Local Screen Share */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-700">Your Screen</h3>
+            {/* <h3 className="text-lg font-semibold text-gray-700">Your Screen</h3> */}
             <button
               onClick={isSharing ? stopSharing : startSharing}
               disabled={!socket || ! socket.id}
@@ -309,7 +309,7 @@ const ScreenShare = ( ) => {
             </button>
           </div>
           
-          <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video">
+          {/* <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video">
             <video
               ref={localVideoRef}
               autoPlay
@@ -325,7 +325,7 @@ const ScreenShare = ( ) => {
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
         </div>
 
         {/* Remote Screen Share */}
@@ -338,7 +338,7 @@ const ScreenShare = ( ) => {
                 className="flex items-center gap-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
               >
                 <MonitorOff className="w-4 h-4" />
-                Stop Viewing
+                Stop receiving
               </button>
             )}
           </div>
@@ -350,27 +350,27 @@ const ScreenShare = ( ) => {
               playsInline
               className="w-full h-full object-contain"
             />
-            {!isReceiving && (
+            {!isReceiving ? (
               <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                 <div className="text-center">
                   <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>Waiting for remote screen share...</p>
                 </div>
               </div>
-            )}
+            ):
+            <div className='absolute mt-[-2.3rem] right-[2rem] flex gap-3 '>
+
+                <MonitorOff className=" w-5 text-red-500" />
+              <MicOff   className='w-5'/>
+
+              <Fullscreen/>
+            </div>
+            }
           </div>
         </div>
       </div>
 
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="font-semibold text-gray-700 mb-2">How to use:</h4>
-        <ul className="text-sm text-gray-600 space-y-1">
-          <li>• Click "Start Sharing" to share your screen with the target user</li>
-          <li>• The remote user will receive a request to view your screen</li>
-          <li>• Remote screens will appear automatically when someone shares with you</li>
-          <li>• All connections are peer-to-peer through WebRTC</li>
-        </ul>
-      </div>
+      
     </div>
   );
 };

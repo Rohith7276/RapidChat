@@ -3,15 +3,22 @@ import { useChatStore } from "../../../store/useChatStore";
 import { useStreamStore } from '../../../store/useStreamStore';
 import { axiosInstance } from "../../../lib/axios";
 import { useAuthStore } from "../../../store/useAuthStore";
-import { Download, MoveLeft, Sun } from "lucide-react";
+import {  MoveLeft, PictureInPicture,   PictureInPicture2Icon  } from "lucide-react";
 import { jsPDF } from "jspdf"
-
+import { Link, useNavigate } from "react-router-dom";
 import Loader from '../../../components/Loader';
-const YouTubePlayer = ({ url }) => {
+const YouTubePlayer = () => {
+  const navigate = useNavigate()
+  const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData } = useStreamStore()
+  const [url, setUrl] = useState(streamData?.streamInfo?.url)
   const [videoId, setVideoId] = useState(url)
   const playerRef = useRef(null);
+  const [isFloating, setIsFloating] = useState(false);
+  const [position, setPosition] = useState({ x: 20, y: 20 }); // default position
+  const dragRef = useRef(null);
+  const offset = useRef({ x: 0, y: 0 });
+  const [loading, setLoading] = useState(false)
   const [pausedTime, setPausedTime] = useState(0);
-  const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData } = useStreamStore()
   const [numPages, setNumPages] = useState(null);
   // Removed unused scroll state
   const [brightness, setBrightness] = useState(100)
@@ -28,7 +35,37 @@ const YouTubePlayer = ({ url }) => {
     }
   }, [pdfCheck]);
 
+  const toggleFloating = () => {
+    setIsFloating(!isFloating);
+  };
+  // Start dragging
+  const handleMouseDown = (e) => {
+    offset.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+   // Move player
+  const handleMouseMove = (e) => {
+    setPosition({
+      x: e.clientX - offset.current.x,
+      y: e.clientY - offset.current.y,
+    });
+  };
+
+  // Stop dragging
+  const handleMouseUp = () => {
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
+
+
   useEffect(() => {
+
     setBrightness(localStorage.getItem("brightness") || 50)
     setBg(localStorage.getItem("bg") || "#f4edd2")
     setColor(localStorage.getItem("color") || "#111")
@@ -47,14 +84,12 @@ const YouTubePlayer = ({ url }) => {
 
 
 
-  const [loading, setLoading] = useState(false)
   useEffect(() => {
     console.log(url)
     if (!url) {
-      console.log(streamData?.streamInfo?.videoUrl)
-      setVideoId(streamData?.streamInfo?.videoUrl)
+      console.log(streamData?.streamInfo?.url)
+      setVideoId(streamData?.streamInfo?.url)
     }
-    setLoading(true)
     try {
       console.log("videoId", videoId)
       const loadYouTubeAPI = () => {
@@ -122,22 +157,34 @@ const YouTubePlayer = ({ url }) => {
       //     videoId,
       //     pausedTime: time,
       //   });
-      alert("Paused time saved:" + time);
+      // alert("Paused time saved:" + time);
     } catch (error) {
       console.error("Error saving pause time:", error);
     }
   };
 
   return (
-    <div>
+    <div className="select-none">
       {loading ? <Loader texts={["Loading..."]} /> :
         <div className="flex items-center justify-center flex-col">
           <div className="w-full p-8 mb-[-5rem] justify-end flex">
-            <button className=" btn" onClick={() => setStartStreaming(0)}><MoveLeft /> </button>
+            <Link className=" btn" to={"/stream"}><MoveLeft /> </Link>
           </div>
           <h2 className="flex justify-center items-center my-1 pb-8"> Video streaming by <span className="ml-2 mr-1"><img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" /></span> <span>{streamData?.senderInfo?.fullName}</span></h2>
-          <div className="w-[54rem] h-[31rem] flex items-center justify-center">
-
+         <div
+        ref={dragRef}
+        className={`transition-all duration-300 p-3 rounded-lg bg-black`}
+        style={{
+          position: isFloating ? "fixed" : "relative",
+          width: isFloating ? "522px" : "640px",
+          height: isFloating ? "330px" : "360px",
+          left: isFloating ? `${position.x}px` : "0",
+          top: isFloating ? `${position.y}px` : "0",
+          zIndex: 9999,
+          cursor: isFloating ? "grab" : "default",
+        }}
+        onMouseDown={isFloating ? handleMouseDown : null}
+      >
             <div id="player" ref={playerRef} className="w-full h-full"   ></div>
           </div>
 
@@ -154,6 +201,12 @@ const YouTubePlayer = ({ url }) => {
                 Seek
               </button>
             )}
+           <button
+        onClick={toggleFloating}
+        className={`${isFloating? "bg-gray-500": "bg-blue-600"} mt-4 px-4 py-2  text-white rounded-xl shadow-lg hover:bg-blue-700`}
+      >
+        { !isFloating?  <PictureInPicture/> : <PictureInPicture2Icon/> }
+      </button>
             {streamData?.senderInfo?.fullName === authUser?.fullName && (
               <button
                 className="bg-base-content text-base-300 p-2 px-3 rounded-md"
@@ -166,34 +219,8 @@ const YouTubePlayer = ({ url }) => {
                 End Stream
               </button>
             )}
-            <button
-              onClick={() => {
-                fetch(pdfUrl)
-                  .then((response) => response.blob())
-                  .then((blob) => {
-                    const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = streamData?.streamInfo?.title + ".pdf";
-                    link.click();
-                    URL.revokeObjectURL(link.href);
-                  })
-                  .catch((error) => console.error("Error downloading the file:", error));
-              }}
-            >
-              <Download />
-            </button>
-            <div className="flex items-center gap-2">
-              <Sun />
-              <input
-                type="range"
-                value={brightness}
-                min={20}
-                max={200}
-                onChange={(e) => {
-                  setBrightness(e.target.value);
-                  localStorage.setItem("brightness", e.target.value);
-                }} />
-            </div>
+
+
             <div>
               <label htmlFor="color" className="text-base-context"></label>
             </div>
@@ -246,7 +273,7 @@ const YouTubePlayer = ({ url }) => {
               placeholder="Notes"
               value={notes}
               onChange={(e) => { setNotes(e.target.value); }}
-              className="w-[57vw] rounded-md p-5 text-base-300  text-4xl max-h-full h-[20vh]"
+              className="w-[57vw] select-text rounded-md p-5 text-base-300  text-4xl max-h-full h-[20vh]"
             ></textarea>
             <button
               className="bg-base-content userselect  text-base-300 mb-3 p-2 px-3 rounded-md"

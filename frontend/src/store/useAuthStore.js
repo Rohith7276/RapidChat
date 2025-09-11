@@ -20,6 +20,10 @@ export const useAuthStore = create((set, get) => ({
   peerId: null,
   friendPeerId: null,
   callerName: null,
+  videoPeer: null,
+  setVideoPeer: (data)=>{
+    set({videoPeer: data})
+  },
   removePeerId: () => {
     set({ friendPeerId: null })
   },
