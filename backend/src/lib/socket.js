@@ -7,10 +7,10 @@ const server = http.createServer(app);
 app.use(
   cors({
     // origin: process.env.CORS_ORIGIN,
-    // origin: "https://rapid-chat-five.vercel.app",
+    origin: "https://rapid-chat-five.vercel.app",
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
-    origin: "http://localhost:5173",
+    // origin: "http://localhost:5173",
   })
 );
 const io = new Server(server, {

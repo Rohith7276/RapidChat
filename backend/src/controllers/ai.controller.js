@@ -76,7 +76,7 @@ export const streamAi = async (req, res) => {
     const { receiverId, groupId } = req.body;
     // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
     console.log("data = ", data)
-
+console.log(data , input)
     const response = await getResponse( input + "\"\n and here is the data for reference:\n" + data );
 
     const newMessage = new Message({

@@ -123,13 +123,14 @@ setNewMsg: (boolval)=> set({newMessageFromUser: boolval}),
   },
   getStreamAiMessage: async (messageData) => {
        const { selectedUser, messages } = get();
+      console.log("mes", messageData)
 
     try {
       let res = {};
       if (selectedUser.fullName !== undefined) {
 
         const  streamData = useStreamStore.getState().streamData
-        console.log("streamData", streamData)
+        console.log("streamData", streamData.streamInfo?.data)
         res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, data: streamData?.streamInfo?.data?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
       }
       else

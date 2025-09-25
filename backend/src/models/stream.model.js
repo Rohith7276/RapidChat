@@ -50,6 +50,10 @@ const streamSchema = new mongoose.Schema(
         }, 
         summary: {
             type: String,
+        },
+        stopTime: {
+            type: String,
+            default: null
         }
     },
     { timestamps:true}

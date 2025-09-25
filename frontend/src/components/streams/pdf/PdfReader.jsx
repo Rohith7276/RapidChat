@@ -5,8 +5,9 @@ import { useStreamStore } from '../../../store/useStreamStore';
 import { useChatStore } from "../../../store/useChatStore";
 import { axiosInstance } from "../../../lib/axios";
 import { useAuthStore } from "../../../store/useAuthStore";
-import { Download, Sun } from "lucide-react";
+import { Download, MoveLeft, Sun } from "lucide-react";
 import { jsPDF } from "jspdf"
+import { Link } from "react-router-dom";
 
 // Set the worker file path
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -16,7 +17,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 const PDFViewer = ( ) => {
  
-    const [numPages, setNumPages] = useState(null);
+    const [numPages,  setNumPages] = useState(null);
     // Removed unused scroll state
     const [brightness, setBrightness] = useState(100)
     const [notes, setNotes] = useState("")
@@ -61,7 +62,10 @@ const PDFViewer = ( ) => {
 
 
     return (
-        <><div className="flex flex-col items-center justify-center w-full h-full px-4 rounded-lg">
+        <><div className="flex  flex-col items-center justify-center w-full h-full px-4 rounded-lg">
+              <div className="w-full m-3  justify-end flex">
+                        <Link className=" btn" to={"/stream"}><MoveLeft /> </Link>
+                      </div>
             <div
                 ref={pdfRef}
                 className="h-[500px] mx-auto overflow-y-scroll w-[900px] flex flex-col items-center"
@@ -102,7 +106,7 @@ const PDFViewer = ( ) => {
                         Seek
                     </button>
                 )}
-                {streamData.senderInfo.fullName === authUser?.fullName && (
+                {streamData?.senderInfo?.fullName === authUser?.fullName && (
                     <button
                         className="bg-base-content text-base-300 p-2 px-3 rounded-md"
                         onClick={() => {

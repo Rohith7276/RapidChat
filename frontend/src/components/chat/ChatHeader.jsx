@@ -3,8 +3,10 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useChatStore } from "../../store/useChatStore";
 import { useStreamStore } from "../../store/useStreamStore";
 import { formatMessageTime } from "../../lib/utils";
+import AiTalk from "./AiTalk";
 import { useNavigate } from "react-router-dom";
-import { Image, TvMinimalPlay, Send, X, Video } from "lucide-react";
+import { Image, TvMinimalPlay, Send, X, Video, Voicemail } from "lucide-react";
+import { useState } from "react";
 const ChatHeader = () => {
   const navigate = useNavigate()
   const {
@@ -14,6 +16,7 @@ const ChatHeader = () => {
     setVideoCall, 
     sendMessage, 
   } = useChatStore();
+  const [aiTalk, setAiTalk] = useState(false)
   const { 
     streamMode, 
     setStreamMode,
@@ -23,7 +26,7 @@ const ChatHeader = () => {
     getStreamAiMessage
   } = useStreamStore();
   const { onlineUsers } = useAuthStore();
-
+  
   const handleStream = () => {
     console.log(window.location.pathname)
     if(window.location.pathname.slice(0, 7) == "/stream" && streamMode){
@@ -60,10 +63,14 @@ const ChatHeader = () => {
           <Video />
 
         </button>
+        <button className={`  btn btn-circle  ${aiTalk ? "text-red-500" : "text-zinc-400"} `} onClick={() => setAiTalk(!aiTalk)} >
+       <Voicemail/>
+        </button>
 
+       {aiTalk&&<AiTalk/>}
         {/* //video stream */}
-        <button className={` streamIcon btn btn-circle  ${streamData.length != 0 ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
-          {streamData.length != 0 && <div className=" p-1  bg-base-content max-w-74 rounded-md  absolute z-[100] mt-[10rem] max-h-30 streamInfo text-base-200">
+        <button className={` streamIcon btn btn-circle  ${streamData.senderInfo != undefined ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
+          {streamData.senderInfo != undefined && <div className=" p-1  bg-base-content max-w-74 rounded-md  absolute z-[100] mt-[10rem] max-h-30 streamInfo text-base-200">
             <div className="p-2  ">
 
               <div className="flex gap-1 items-center justify-center flex-col w-full">

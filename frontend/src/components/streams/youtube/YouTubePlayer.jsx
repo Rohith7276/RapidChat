@@ -6,10 +6,10 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import {  MoveLeft, PictureInPicture,   PictureInPicture2Icon  } from "lucide-react";
 import { jsPDF } from "jspdf"
 import { Link, useNavigate } from "react-router-dom";
-import Loader from '../../../components/Loader';
+import Loader from '../../../components/Loader'; 
 const YouTubePlayer = () => {
   const navigate = useNavigate()
-  const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData } = useStreamStore()
+  const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming,getStream , endStream, streamData } = useStreamStore()
   const [url, setUrl] = useState(streamData?.streamInfo?.url)
   const [videoId, setVideoId] = useState(url)
   const playerRef = useRef(null);
@@ -152,12 +152,7 @@ const YouTubePlayer = () => {
 
   const savePauseTime = async (time) => {
     try {
-      //   await axios.post("http://localhost:5000/save-pause-time", {
-      //     userId,
-      //     videoId,
-      //     pausedTime: time,
-      //   });
-      // alert("Paused time saved:" + time);
+   
     } catch (error) {
       console.error("Error saving pause time:", error);
     }
@@ -211,9 +206,10 @@ const YouTubePlayer = () => {
               <button
                 className="bg-base-content text-base-300 p-2 px-3 rounded-md"
                 onClick={() => {
-                  setStartStreaming(false);
                   setStreamData([]);
-                  endStream();
+                  endStream(); 
+                  getStream();
+                  navigate("/stream")
                 }}
               >
                 End Stream

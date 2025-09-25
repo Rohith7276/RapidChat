@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import { cloudinary } from "../lib/cloudinary.js";
-import PdfParse from "pdf-parse"; 
+import PdfParse from "pdf-parse";
 // import { YoutubeTranscript, YoutubeTranscriptDisabledError, YoutubeTranscriptNotAvailableError } from 'youtube-transcript-plus';
 import {
     Supadata,
@@ -62,17 +62,17 @@ export const uploadPdf = async (req, res) => {
         return res.status(500).json({ message: "Invalid Document" });
     }
 }
- 
+
 
 export const createStream = async (req, res) => {
-    try { 
-        let { title, description, url, data,  groupId, name, recieverId, type } = req.body;
+    try {
+        let { title, description, url, data, groupId, name, recieverId, type } = req.body;
         const userId = req.user._id;
         const user = await User.findById(userId);
-        const summary = null; 
-        if (!user) return res.status(404).json({ message: "User not found" }); 
+        const summary = null;
+        if (!user) return res.status(404).json({ message: "User not found" });
         if (!url) return res.status(400).json({ message: "Any one url is required" });
-         
+
         if (!groupId && !recieverId) {
             return res.status(400).json({ message: "Either groupId or recieverId is required" });
         }
@@ -107,7 +107,7 @@ export const createStream = async (req, res) => {
             }
             data = transcriptResult.content;
         }
-        const group = groupId ? await Group.findById(groupId) : null; 
+        const group = groupId ? await Group.findById(groupId) : null;
 
         if (!group) {
             groupId = ""
@@ -116,14 +116,14 @@ export const createStream = async (req, res) => {
         }
         else {
             groupId = group?._id
-        } 
- 
+        }
+
         const stream = await Stream.create({
             streamerId: userId,
             groupId,
             receiverId: recieverId,
             streamInfo: {
-                type, 
+                type,
                 name,
                 url,
                 data,
@@ -136,7 +136,7 @@ export const createStream = async (req, res) => {
             },
             summary
         });
-       
+
         if (!stream) return res.status(400).json({ message: "Stream not created" });
         const receiverSocketId = getReceiverSocketId(recieverId);
         if (receiverSocketId) {
@@ -150,7 +150,7 @@ export const createStream = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 }
- 
+
 export const checkUrl = async (req, res) => {
     const url = req.query.url;
     try {
@@ -221,12 +221,74 @@ export const getStream = async (req, res) => {
                     stopTime: null
                 }]
             });
+        console.log(streams)
         return res.status(200).json(streams);
     } catch (error) {
         console.error("Error in getStream: ", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
 }
+export const getAllStream = async (req, res) => {
+    try {
+        let { id: friendId } = req.params;
+        const userId = req.user._id;
+        if (!friendId) {
+            return res.status(400).json({ message: "ID parameter is required" });
+        }
+        let friend = await User.findById(friendId);
+        if (!friend) {
+            friend = await Group.findById(friendId)
+        }
+        if (!friend) return res.status(404).json({ message: "Friend not found" });
+        const streams = await Stream.find(
+            {
+                $or: [{
+                    $and: [{ streamerId: userId }, { receiverId: friend._id }]
+                }, {
+                    $and: [{ receiverId: userId }, { streamerId: friend._id }]
+                }, {
+                    groupId: friendId
+                },]
+
+            });
+        console.log(streams)
+        return res.status(200).json(streams);
+    } catch (error) {
+        console.error("Error in getAllStream: ", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+export const geSpecificStream = async (req, res) => {
+    try {
+        let { id: streamId } = req.params;
+
+        const streams = await Stream.findOne(
+            { _id: streamId });
+
+        const userId = req.user._id;
+
+        let user = await User.findById(userId);
+        const stream = await Stream.create({
+            streamerId: user._id,
+            groupId: streams.groupId,
+            receiverId: streams.receiverId,
+            streamInfo: streams.streamInfo,
+            senderInfo: {
+                fullName: user.fullName,
+                profilePic: user.profilePic
+            },
+            summary: streams.summary
+        });
+
+
+        console.log(streams)
+        return res.status(200).json(stream);
+    } catch (error) {
+        console.error("Error in getSpecificStream: ", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
 
 
 export const endStream = async (req, res) => {
@@ -259,6 +321,7 @@ export const endStream = async (req, res) => {
             { $set: { stopTime: new Date() } },
             { new: true }
         );
+        console.log(streams)
 
 
         const receiverSocketId = getReceiverSocketId(friendId);

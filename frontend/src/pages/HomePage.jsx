@@ -1,6 +1,6 @@
 import { useChatStore } from "../store/useChatStore";
 import { useState, useEffect } from "react";
-import ScreenShare from "../components/screenShare/ScreenShare.jsx";
+import ScreenShare from "../components/streams/screenShare/ScreenShare.jsx";
 import Sidebar from "../components/Sidebar";
 import { Book, BookA, BotMessageSquare, BrainCircuit, FlipHorizontal2, Globe, MoveLeft, ScreenShareIcon, X, Youtube } from 'lucide-react';
 import WebsiteViewer from "../components/streams/website/WebsiteStream.jsx";
