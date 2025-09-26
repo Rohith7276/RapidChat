@@ -193,7 +193,7 @@ regarding the information data : ${data}
                 data,
                 title,
                 description,
-                quizData: quizData,
+                quizData: quizData.slice(0, 5800),
             },
             senderInfo: {
                 fullName: user.fullName,
