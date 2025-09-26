@@ -8,7 +8,7 @@ app.use(
   cors({
     // origin: process.env.CORS_ORIGIN,
     origin: "https://rapid-chat-five.vercel.app",
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST','PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
     // origin: "http://localhost:5173",
   })
