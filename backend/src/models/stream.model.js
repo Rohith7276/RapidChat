@@ -46,7 +46,15 @@ const streamSchema = new mongoose.Schema(
             },
             description:{
                 type: String, 
-            }            
+            }, 
+            quizData:{
+                type: String,
+                default: ""
+            }, 
+            leaderboard:{
+                type: String,
+                default: ""
+            }      
         }, 
         summary: {
             type: String,

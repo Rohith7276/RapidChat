@@ -62,14 +62,14 @@ const ChatHeader = () => {
         <button className={`  btn btn-circle  ${videoCall ? "text-red-500" : "text-zinc-400"} `} onClick={() => setVideoCall(!videoCall)} >
           <Video />
 
-        </button>
+        </button> 
         <button className={`  btn btn-circle  ${aiTalk ? "text-red-500" : "text-zinc-400"} `} onClick={() => setAiTalk(!aiTalk)} >
        <Voicemail/>
         </button>
 
        {aiTalk&&<AiTalk/>}
         {/* //video stream */}
-        <button className={` streamIcon btn btn-circle  ${streamData.senderInfo != undefined ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
+     <button className={` streamIcon btn btn-circle  ${streamData.senderInfo != undefined ? "text-red-500" : "text-zinc-400"} `} onClick={handleStream} type="button"  >
           {streamData.senderInfo != undefined && <div className=" p-1  bg-base-content max-w-74 rounded-md  absolute z-[100] mt-[10rem] max-h-30 streamInfo text-base-200">
             <div className="p-2  ">
 
@@ -92,7 +92,7 @@ const ChatHeader = () => {
             </div>
           </div>}
           <TvMinimalPlay />
-        </button>
+        </button> 
         {/* Close button */}
         <button className="mx-3 " onClick={() => { setSelectedUser(null); setStreamData([]) }}>
           <X />

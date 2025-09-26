@@ -15,7 +15,7 @@ export default async function getResponse(input) {
         // "model": "llama3-8b-8192",
          model: "openai/gpt-oss-20b",
         "temperature": 1,
-        "max_tokens": 1024,
+        "max_tokens": 10024,
         "top_p": 1,
         "stream": true,
         "stop": null

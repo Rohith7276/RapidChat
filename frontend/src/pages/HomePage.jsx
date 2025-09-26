@@ -13,6 +13,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useStreamStore } from '../store/useStreamStore';
 import toast from "react-hot-toast";
 import { useNavigate, Outlet } from 'react-router-dom';
+import Voice_txt from "../components/Voice_txt.jsx"
 
 
 const HomePage = () => {
@@ -65,6 +66,7 @@ const HomePage = () => {
     <div className="h-screen overflow-y-scroll bg-base-200">
       <div className="flex items-center gap-0.5 justify-center pt-20 px-4">
         <div className={`bg-base-100 rounded-l-lg shadow-lg ${streamMode ? "w-[35vw] h-[calc(100vh-6rem)]" : "max-w-7xl h-[calc(100vh-8rem)]"}`}>
+{/* <Voice_txt/> */}
           <div className="flex h-full rounded-lg overflow-hidden">
             <Sidebar /> 
             {!selectedUser ? <NoChatSelected /> : <ChatContainer />}
@@ -75,7 +77,6 @@ const HomePage = () => {
 
      
  
-
  
             <div className="min-h-[70%]">
             

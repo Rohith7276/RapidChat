@@ -28,12 +28,18 @@ const YouTubePlayer = () => {
   const { selectedUser } = useChatStore()
   const { authUser } = useAuthStore()
 
+ 
 
   useEffect(() => {
-    if (playerRef.current) {
-
+    console.log(pdfScrollTop)
+    if (playerRef.current && pdfScrollTop>2) {
+      playerRef.current?.seekTo(pdfScrollTop, true);
     }
-  }, [pdfCheck]);
+  }, [pdfScrollTop]);
+  // useEffect(() => {
+  //    setPdfScroll(playerRef.current?.getCurrentTime())
+  // }, [pdfCheck]);
+  
 
   const toggleFloating = () => {
     setIsFloating(!isFloating);
@@ -137,22 +143,14 @@ const YouTubePlayer = () => {
   };
 
   const onPlayerStateChange = (event) => {
-    if (event.data === window.YT.PlayerState.PAUSED) {
-      const time = playerRef.current.getCurrentTime();
-      setPausedTime(time);
-      savePauseTime(time);
-    }
-    if (event.data === window.YT.PlayerState.PAUSED) {
-      const time = playerRef.current.getCurrentTime();
-      setPausedTime(time);
-      savePauseTime(time);
-    }
-
+    const time = playerRef.current.getCurrentTime();
+   
+    savePauseTime(time);
   };
 
   const savePauseTime = async (time) => {
     try {
-   
+      setPdfScroll(time)
     } catch (error) {
       console.error("Error saving pause time:", error);
     }
@@ -168,7 +166,7 @@ const YouTubePlayer = () => {
           <h2 className="flex justify-center items-center my-1 pb-8"> Video streaming by <span className="ml-2 mr-1"><img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" /></span> <span>{streamData?.senderInfo?.fullName}</span></h2>
          <div
         ref={dragRef}
-        className={`transition-all duration-300 p-3 rounded-lg bg-black`}
+        className={`transition-all !z-[10] duration-300 p-3 rounded-lg bg-black`}
         style={{
           position: isFloating ? "fixed" : "relative",
           width: isFloating ? "522px" : "640px",
@@ -180,7 +178,7 @@ const YouTubePlayer = () => {
         }}
         onMouseDown={isFloating ? handleMouseDown : null}
       >
-            <div id="player" ref={playerRef} className="w-full h-full"   ></div>
+            <div id="player" ref={playerRef} className="w-full h-full z-[100] "   ></div>
           </div>
 
           <div className="flex justify-between w-full px-11 items-center mt-4">
@@ -189,7 +187,7 @@ const YouTubePlayer = () => {
                 className="bg-base-content text-base-300 p-2 px-3 rounded-md"
                 onClick={async () => {
                   await axiosInstance.get(
-                    `/auth/user/stream-control/${selectedUser._id}/999999/${streamData._id}`
+                    `/stream/stream-control/${selectedUser._id}/999999/${streamData._id}`
                   );
                 }}
               >

@@ -21,6 +21,7 @@ import PDFViewer from "./components/streams/pdf/PdfReader";
 import UploadPDF from "./components/streams/pdf/UploadFile";
 import WebsiteViewer from "./components/streams/website/WebsiteStream";
 import ScreenShare from "./components/streams/screenShare/ScreenShare";
+import Arena from "./components/streams/quiz/arena";
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
@@ -64,6 +65,7 @@ const App = () => {
 
           <Route path="website" element={authUser ? <WebsiteViewer /> : <Navigate to="/login" />} />
           <Route path="screen-share" element={authUser ? <ScreenShare /> : <Navigate to="/login" />} />
+          <Route path="quiz" element={authUser ? <Arena /> : <Navigate to="/login" />} />
 
 
         </Route>

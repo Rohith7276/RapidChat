@@ -1,6 +1,8 @@
 import User from "../models/user.model.js";
 import { Group } from "../models/group.model.js";
 import Stream from "../models/stream.model.js";
+import getResponse from "../lib/ai.js";
+
 import fs from 'fs';
 import path from 'path';
 import { getReceiverSocketId, io } from "../lib/socket.js";
@@ -118,6 +120,68 @@ export const createStream = async (req, res) => {
             groupId = group?._id
         }
 
+
+        let quizData = null;
+        if (type == "youtube" || type == "pdf") {
+            quizData = await getResponse(
+                `Give me only valid JSON, without any Markdown fences (no \`\`\`), no comments, no trailing commas, no explanations. The JSON must be directly usable with JSON.parse of 10 number of questions for a quiz in format of:
+{
+	"quiz":[
+		{
+			"question": "first question", 
+			"options": [
+				{
+					"title": "title", 
+				},
+				{
+					"title": "title", 
+				},
+				{
+					"title": "title", 
+				},
+				{
+					"title": "title", 
+				}
+			],
+			"answer":{
+				index: optionIndex,
+				title: "title",
+				description: "explanation"
+			}
+		},
+		{
+			"question": "second question", 
+			"options": [
+				{
+					"title": "title", 
+				},
+				{
+					"title": "title", 
+				},
+				{
+					"title": "title", 
+				},
+				{
+					"title": "title", 
+				}
+			],
+			"answer":{
+				index: optionIndex,
+				title: "title",
+				description: "explanation"
+			}
+			
+		}
+	]
+}
+
+regarding the information data : ${data}
+`
+
+            );
+        }
+        console.log(quizData)
+
         const stream = await Stream.create({
             streamerId: userId,
             groupId,
@@ -128,7 +192,8 @@ export const createStream = async (req, res) => {
                 url,
                 data,
                 title,
-                description
+                description,
+                quizData: quizData,
             },
             senderInfo: {
                 fullName: user.fullName,
@@ -173,6 +238,7 @@ export const streamControls = async (req, res) => {
     try {
         const { id: friendId, streamId, action } = req.params;
         const userId = req.user._id;
+        console.log(friendId, streamId, action);
         let friend = await User.findById(friendId);
         if (!friend) {
             friend = await Group.findById(friendId)
@@ -328,6 +394,57 @@ export const endStream = async (req, res) => {
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("stream", streams);
         }
+        return res.status(200).json(streams);
+    } catch (error) {
+        console.error("Error in endStream: ", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+export const updateStream = async (req, res) => {
+    try {
+        let { id: streamId, points } = req.params;
+        const userId = req.user._id;
+        const user = await User.findById(userId);
+        const stream = await Stream.find(
+            { _id: streamId }
+        );
+        console.log(stream)
+        let data = null
+        if (stream[0].streamInfo.leaderboard != "") {
+            const temp = JSON.parse(stream[0].streamInfo?.leaderboard)
+            data = [...temp, { name: user.fullName, points: points, badge: "" }]
+        }
+        else {
+            data = [{ name: user.fullName, points: points, badge: "" }]
+        }
+        data.sort((a, b) => b.points - a.points);
+
+        for (let index = 0; index < data.length; index++) {
+            if (index == 0) {
+                data[0].badge = "Gold"
+            }
+            else if (index == 1) {
+                data[1].badge = "Silver"
+
+            }
+            else if (index == 2) {
+                data[2].badge = "Bronze"
+
+            }
+            else{
+                data[index].badge = "Keep Learning"
+            }
+        }
+
+        console.log(data)
+
+        const streams = await Stream.findOneAndUpdate(
+            { _id: streamId },
+            { $set: { "streamInfo.leaderboard": JSON.stringify(data) } },
+            { new: true }
+        );
+        console.log(streams)
+ 
         return res.status(200).json(streams);
     } catch (error) {
         console.error("Error in endStream: ", error.message);

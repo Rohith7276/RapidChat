@@ -1,5 +1,5 @@
 
-import { Book, Globe, X, ScreenShareIcon, Youtube, Menu, HistoryIcon } from 'lucide-react';
+import { Book, Globe, X, ScreenShareIcon, Youtube, Menu, HistoryIcon,   Medal } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
 import { useStreamStore } from "../../store/useStreamStore";
@@ -75,7 +75,7 @@ const stream = () => {
 
             <h1 className="text-xl font-semibold my-8 ">Select a source to stream</h1>
             <div className="flex flex-wrap justify-center py-6 items-center gap-11 ">
-                <button
+                  <button
                     onClick={() => {
 
                         if (streamData?.streamInfo?.type == "youtube") {
@@ -93,7 +93,7 @@ const stream = () => {
                     <Youtube className="size-[5rem]" />
 
                     YouTube
-                </button>
+                </button>  
                 <button
                     onClick={() => {
                         if (streamData?.streamInfo?.type != "pdf") {
@@ -109,6 +109,17 @@ const stream = () => {
                     <Book className="size-[5rem]" /> PDF
                 </button>
                 <button
+                    onClick={() => { 
+                            navigate("/stream/quiz")
+                         
+                      
+                    }}
+                    className={`${streamData?.streamInfo?.type == "pdf" ? "border-2 border-white " : ""} px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition`}
+                >
+                    {streamData?.streamInfo?.type == "pdf" && <div className="text-red-600 bg-slate-800 px-2 pb-1 rounded-md  font-bold text-lg">Streaming now!</div>}
+                    <Medal className="size-[5rem]" /> QUIZ
+                </button>
+              <button
                     onClick={() => {
                         navigate("/stream/website")
                     }}
@@ -123,7 +134,7 @@ const stream = () => {
                     className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[30vh] w-[15vw] bg-[#ededed] text-black rounded-lg hover:bg-gray-200 transition"
                 >
                     <ScreenShareIcon className="size-[5rem]" /> Screen share
-                </button>
+                </button>  
             </div>
         </div>
     )
