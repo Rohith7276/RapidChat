@@ -175,7 +175,7 @@ export const createStream = async (req, res) => {
 	]
 }
 
-regarding the information data : ${data}
+regarding the information data : ${data.slice(0, 5000)}
 `
 
             );
