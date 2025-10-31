@@ -74,7 +74,7 @@ const PDFViewer = ( ) => {
                     <Document
                         file={streamData?.streamInfo?.url}
                         onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                        className="w-full"
+                        className="w-full select-text"
                     >
                         {numPages &&
                             Array.from({ length: numPages }, (_, i) => (

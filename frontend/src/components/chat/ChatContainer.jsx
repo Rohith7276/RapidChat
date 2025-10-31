@@ -49,13 +49,13 @@ const chatContainer = () => {
   const [imageViewSrc, setImageViewSrc] = useState("")
   const size = useRef(null)
 
-  const scrollToBottom = () => { 
+  const scrollToBottom = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-  
+
   const handleScroll = () => {
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-    const isAtBottom = Math.floor(scrollHeight- scrollTop) == clientHeight; 
+    const isAtBottom = Math.floor(scrollHeight - scrollTop) == clientHeight;
     setMoveDown(!isAtBottom);
   };
 
@@ -64,7 +64,7 @@ const chatContainer = () => {
   }, []);
 
   const [incomingCall, setIncomingCall] = useState(false)
-  useEffect(() => { 
+  useEffect(() => {
     if (inView && size.current != null) {
       setPage(page + 1)
     }
@@ -104,7 +104,7 @@ const chatContainer = () => {
 
   //Infinite scroll
   useEffect(() => {
-    peer.on('call', (call) => { 
+    peer.on('call', (call) => {
       setVideoCall(true)
 
       setIncomingCall(call)
@@ -114,10 +114,10 @@ const chatContainer = () => {
 
 
   useEffect(() => {
-    if(chatContainer.current){
-    prevScrollHeight.current = containerRef.current?.scrollHeight;
-    prevScrollTop.current = containerRef.current?.scrollTop;
-  } 
+    if (chatContainer.current) {
+      prevScrollHeight.current = containerRef.current?.scrollHeight;
+      prevScrollTop.current = containerRef.current?.scrollTop;
+    }
     setMessage(messages)
   }, [messages]);
 
@@ -238,7 +238,15 @@ const chatContainer = () => {
                       className="sm:max-w-[200px] hover:cursor-pointer rounded-md mb-2"
                     />
                   )}
-                  {message.text && <p dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/@rapid/g, '<b >$&</b>') }}></p>}
+                  {message.text && <p dangerouslySetInnerHTML={{
+                    __html: message.text
+                      .replace(/^###\s/gm, "<h3>") // headings
+                      .replace(/^>\s?/gm, "<blockquote>")
+                      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+                      .replace(/\*(.*?)\*/g, "<i>$1</i>")
+                      .replace(/---/g, "<hr>")
+                      .replace(/\n/g, "<br/>"),
+                  }}></p>}
                 </div>
               </div>}
           </>
@@ -266,7 +274,7 @@ const chatContainer = () => {
         )}
       </div>
       <div className="w-full z-[100]  flex justify-end">
-        <button onClick={scrollToBottom} className={`${MoveDown? "block": "hidden"}  bg-base-300 h-fit p-2 rounded-md w-fit mt-[-3rem] mr-8`}><ChevronDown /></button>
+        <button onClick={scrollToBottom} className={`${MoveDown ? "block" : "hidden"}  bg-base-300 h-fit p-2 rounded-md w-fit mt-[-3rem] mr-8`}><ChevronDown /></button>
       </div>
       {videoCall && <VideoStream ref={childRef} setIncomingCall={setIncomingCall} incomingCall={incomingCall} />}
       {/* Incoming Call Modal */}
