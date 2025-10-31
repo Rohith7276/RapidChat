@@ -175,7 +175,7 @@ export const createStream = async (req, res) => {
 	]
 }
 
-regarding the information data : ${data}
+regarding the information data : ${data.slice(0, 5000)}
 `
 
             );
@@ -193,7 +193,7 @@ regarding the information data : ${data}
                 data,
                 title,
                 description,
-                quizData: quizData,
+                quizData: quizData.slice(0, 5800),
             },
             senderInfo: {
                 fullName: user.fullName,
