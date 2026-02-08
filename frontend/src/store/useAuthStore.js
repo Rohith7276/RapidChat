@@ -84,8 +84,7 @@ export const useAuthStore = create((set, get) => ({
     const user = useChatStore.getState().selectedUser;
     const authUser = get().authUser
     const socket1 = get().socket;
-
-    console.log("calling");
+ 
     if (user.name !== undefined) {
       socket1.emit('get-peer-id', user, authUser, true);
 
@@ -120,14 +119,13 @@ export const useAuthStore = create((set, get) => ({
     });
     socket.connect();
 
-    set({ socket: socket });
-    console.log("socket", socket)
+    set({ socket: socket }); 
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
 
     socket.on('send-local-peer-id', (data, callback) => {
-      console.log("sending local peer id");
+     
 
       const peerId = get().peerId;
       callback(peerId)
@@ -140,10 +138,8 @@ export const useAuthStore = create((set, get) => ({
       const setVideoCall = useChatStore.getState().setVideoCall
       setSelectedUser({ ...name })
       setVideoCall(true)
-
-      console.log("getting local peer id", requesterSocketId);
-      const peerId = get().peerId
-      console.log("this is peerid", peerId)
+ 
+      const peerId = get().peerId 
       //  callback(peerId)
       const socket1 = get().socket;
 
@@ -151,14 +147,12 @@ export const useAuthStore = create((set, get) => ({
 
     });
     socket.on('take-peer-id', (data) => {
-      console.log("taking peer id here", data);
       set({ friendPeerId: data })
     })
     const p = new Peer();
     set({ peer: p });
     p.on('open', (id) => {
       set({ peerId: id });
-      console.log("do now")
     });
 
 

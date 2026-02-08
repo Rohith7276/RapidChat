@@ -7,17 +7,17 @@ const server = http.createServer(app);
 app.use(
   cors({
     // origin: process.env.CORS_ORIGIN,
-    origin: "https://rapid-chat-five.vercel.app",
+    // origin: "https://rapid-chat-five.vercel.app",
     methods: ['GET', 'POST','PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
-    // origin: "http://localhost:5173", 
+    origin: "http://localhost:5173", 
   })
 );
 const io = new Server(server, {
   cors: {
     // origin: [process.env.CORS_ORIGIN],
-    origin: ["https://rapid-chat-five.vercel.app"],
-    // origin: ["http://localhost:5173"],
+    // origin: ["https://rapid-chat-five.vercel.app"],
+    origin: ["http://localhost:5173"],
   },
 });
 
@@ -43,8 +43,7 @@ const getUserInfo = (socketId) => {
 
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
-  console.log(socket.id)
+  console.log("A user connected", socket.id); 
   const userId = socket.handshake.query.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
@@ -57,8 +56,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join-room", (data)=>{
-    const {emailId, roomId } = data;
-    console.log("user", emailId, roomId)
+    const {emailId, roomId } = data; 
     socketToEmailMapping.set(socket.id, emailId)
     emailToSocketMapping.set(emailId, socket.id)
     socket.join(roomId)
@@ -91,8 +89,7 @@ io.on("connection", (socket) => {
   // Handle WebRTC offer
   socket.on('offer', (data) => {
     const { offer, to } = data;
-
-    console.log(`Forwarding offer from ${socket.id} to ${to}`);
+ 
 
     io.to(to).emit('offer', {
       offer: offer,
@@ -103,8 +100,7 @@ io.on("connection", (socket) => {
   // Handle WebRTC answer
   socket.on('answer', (data) => {
     const { answer, to } = data;
-
-    console.log(`Forwarding answer from ${socket.id} to ${to}`);
+ 
 
     io.to(to).emit('answer', {
       answer: answer,
@@ -115,8 +111,7 @@ io.on("connection", (socket) => {
   // Handle ICE candidates
   socket.on('ice-candidate', (data) => {
     const { candidate, to } = data;
-
-    console.log(`Forwarding ICE candidate from ${socket.id} to ${to}`);
+ 
 
     io.to(to).emit('ice-candidate', {
       candidate: candidate,
@@ -128,8 +123,7 @@ io.on("connection", (socket) => {
   socket.on('screen-share-request', (data) => {
     const { to } = data;
     const userInfo = getUserInfo(socket.id);
-
-    console.log(`Screen share request from ${socket.id} to ${to}`);
+ 
 
     // Update user status
     connectedUsers.set(socket.id, {
@@ -148,8 +142,7 @@ io.on("connection", (socket) => {
   socket.on('screen-share-response', (data) => {
     const { accepted, to } = data;
     const userInfo = getUserInfo(socket.id);
-
-    console.log(`Screen share response from ${socket.id} to ${to}: ${accepted ? 'accepted' : 'declined'}`);
+ 
 
     io.to(to).emit('screen-share-response', {
       accepted: accepted,
@@ -163,8 +156,7 @@ io.on("connection", (socket) => {
   socket.on('screen-share-ended', (data) => {
     const { to } = data;
     const userInfo = getUserInfo(socket.id);
-
-    console.log(`Screen share ended by ${socket.id}`);
+ 
 
     // Update user status
     connectedUsers.set(socket.id, {
@@ -236,8 +228,7 @@ io.on("connection", (socket) => {
   });
 
   // Handle disconnect
-  socket.on('disconnect', (reason) => {
-    console.log(`User disconnected: ${socket.id}, reason: ${reason}`);
+  socket.on('disconnect', (reason) => { 
 
     const userInfo = getUserInfo(socket.id);
 
@@ -265,8 +256,7 @@ io.on("connection", (socket) => {
 
         // Clean up empty room
         if (room.participants.length === 0) {
-          activeRooms.delete(userInfo.currentRoom);
-          console.log(`Room ${userInfo.currentRoom} deleted (empty)`);
+          activeRooms.delete(userInfo.currentRoom); 
         }
       }
     }
@@ -296,17 +286,14 @@ io.on("connection", (socket) => {
   });
   socket.on("joinGroup", ({ groupId, userId }) => {
     socket.join(groupId);
-    userSocketMap[userId] = socket.id;
-    console.log(`User ${userId} joined group ${groupId}`);
+    userSocketMap[userId] = socket.id; 
   });
 
-  socket.on('get-peer-id', (userId, name, group) => {
-    console.log("getting peer id", group);
+  socket.on('get-peer-id', (userId, name, group) => { 
 
     if (!group) {
       const requesterSocketId = socket.id;
-      const receiverSocketId = getReceiverSocketId(userId);
-      console.log(requesterSocketId)
+      const receiverSocketId = getReceiverSocketId(userId); 
       // Ask the receiver for their peer ID, and pass along who’s asking
       io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, name);
     }
@@ -322,8 +309,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on('send-peer-id', (peerId, requesterSocketId) => {
-    console.log("data", peerId, requesterSocketId)
+  socket.on('send-peer-id', (peerId, requesterSocketId) => { 
     io.to(requesterSocketId).emit('take-peer-id', peerId)
   })
 

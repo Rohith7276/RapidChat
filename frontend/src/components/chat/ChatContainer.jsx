@@ -238,13 +238,14 @@ const chatContainer = () => {
                       className="sm:max-w-[200px] hover:cursor-pointer rounded-md mb-2"
                     />
                   )}
-                  {message.text && <p dangerouslySetInnerHTML={{
+                  {message.text && <p className="w-full text-clip" dangerouslySetInnerHTML={{
                     __html: message.text
                       .replace(/^###\s/gm, "<h3>") // headings
                       .replace(/^>\s?/gm, "<blockquote>")
                       .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
                       .replace(/\*(.*?)\*/g, "<i>$1</i>")
                       .replace(/---/g, "<hr>")
+                      .replace("@rapid", "<b>@rapid</b>")
                       .replace(/\n/g, "<br/>"),
                   }}></p>}
                 </div>
@@ -273,7 +274,7 @@ const chatContainer = () => {
           </div>
         )}
       </div>
-      <div className="w-full z-[100]  flex justify-end">
+      <div className="w-full z-[10]  flex justify-end">
         <button onClick={scrollToBottom} className={`${MoveDown ? "block" : "hidden"}  bg-base-300 h-fit p-2 rounded-md w-fit mt-[-3rem] mr-8`}><ChevronDown /></button>
       </div>
       {videoCall && <VideoStream ref={childRef} setIncomingCall={setIncomingCall} incomingCall={incomingCall} />}

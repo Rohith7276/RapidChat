@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Monitor, MonitorOff, Users, Wifi, WifiOff, AlertCircle, Fullscreen, MicOff, PhoneOff } from 'lucide-react';
+import { Monitor, MonitorOff, Users, Wifi, WifiOff, AlertCircle, Fullscreen, MicOff, PhoneOff, MoveLeft } from 'lucide-react';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { useChatStore } from '../../../store/useChatStore';
 import Loader from '../../Loader';
-const ScreenShare = ( ) => {
-   const { socket } = useAuthStore();
+import { Link } from 'react-router-dom';
+const ScreenShare = () => {
+  const { socket, onlineUsers } = useAuthStore();
   const { selectedUserSocketId } = useChatStore();
   const [isSharing, setIsSharing] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [error, setError] = useState('');
-  
+
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const peerConnectionRef = useRef(null);
@@ -25,7 +26,7 @@ const ScreenShare = ( ) => {
   };
 
   useEffect(() => {
-    if (!socket || ! socket.id) {
+    if (!socket || !socket.id) {
       setError('Socket or user ID not provided');
       return;
     }
@@ -33,7 +34,7 @@ const ScreenShare = ( ) => {
     // Initialize peer connection
     const initPeerConnection = () => {
       const pc = new RTCPeerConnection(rtcConfig);
-      
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit('ice-candidate', {
@@ -70,7 +71,7 @@ const ScreenShare = ( ) => {
         await peerConnectionRef.current.setRemoteDescription(data.offer);
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
-        
+
         socket.emit('answer', {
           answer: answer,
           to: data.from
@@ -97,7 +98,6 @@ const ScreenShare = ( ) => {
     };
 
     const handleScreenShareRequest = async (data) => {
-      console.log("is it confirming?")
       socket.emit('screen-share-response', {
         accepted: true,
         to: data.from
@@ -132,7 +132,7 @@ const ScreenShare = ( ) => {
       socket.off('ice-candidate', handleIceCandidate);
       socket.off('screen-share-request', handleScreenShareRequest);
       socket.off('screen-share-response', handleScreenShareResponse);
-      
+
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
       }
@@ -140,13 +140,13 @@ const ScreenShare = ( ) => {
         localStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [socket,  socket.id, selectedUserSocketId]);
+  }, [socket, socket.id, selectedUserSocketId]);
 
   const createOffer = async () => {
     try {
       const offer = await peerConnectionRef.current.createOffer();
       await peerConnectionRef.current.setLocalDescription(offer);
-      
+
       socket.emit('offer', {
         offer: offer,
         to: selectedUserSocketId
@@ -159,7 +159,7 @@ const ScreenShare = ( ) => {
   const startSharing = async () => {
     try {
       setError('');
-      
+
       // Get screen share stream
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
@@ -172,7 +172,7 @@ const ScreenShare = ( ) => {
       });
 
       localStreamRef.current = stream;
-      
+
       // Display local stream
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
@@ -193,7 +193,7 @@ const ScreenShare = ( ) => {
       // Send screen share request
       if (selectedUserSocketId) {
         socket.emit('screen-share-request', {
-          from:  socket.id,
+          from: socket.id,
           to: selectedUserSocketId
         });
       } else {
@@ -257,13 +257,19 @@ const ScreenShare = ( ) => {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-base-100 rounded-lg text-content  ">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-          <Users className="w-6 h-6" />
+        <div className="text-2xl font-bold   justify-between flex items-center gap-2">
+          <h2 className='flex gap-3 items-center'>
+
+          <Users className="w-fit h-6" />
           P2P Screen Share
-        </h2>
-        
+          </h2>
+          <div className="w-fit p-8 justify-end flex">
+            <Link className="btn" to='/stream'><MoveLeft /> </Link>
+          </div>
+        </div>
+
         <div className="flex items-center gap-4 text-sm  ">
-          <span>User ID: <code className=" bg-base-content text-base-100 px-2 py-1 rounded">{ socket.id}</code></span>
+          <span>User ID: <code className=" bg-base-content text-base-100 px-2 py-1 rounded">{socket.id}</code></span>
           {selectedUserSocketId && (
             <span>Target: <code className="  px-2 py-1 rounded">{selectedUserSocketId}</code></span>
           )}
@@ -288,12 +294,11 @@ const ScreenShare = ( ) => {
             {/* <h3 className="text-lg font-semibold text-gray-700">Your Screen</h3> */}
             <button
               onClick={isSharing ? stopSharing : startSharing}
-              disabled={!socket || ! socket.id}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                isSharing
+              disabled={!socket || !socket.id}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${isSharing
                   ? 'bg-red-500 hover:bg-red-600 text-white'
                   : 'bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed'
-              }`}
+                }`}
             >
               {isSharing ? (
                 <>
@@ -308,7 +313,7 @@ const ScreenShare = ( ) => {
               )}
             </button>
           </div>
-          
+
           {/* <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video">
             <video
               ref={localVideoRef}
@@ -342,7 +347,7 @@ const ScreenShare = ( ) => {
               </button>
             )}
           </div>
-          
+
           <div className="relative bg-base-300  rounded-lg overflow-hidden aspect-video">
             <video
               ref={remoteVideoRef}
@@ -357,20 +362,20 @@ const ScreenShare = ( ) => {
                   <p>Waiting for remote screen share...</p>
                 </div>
               </div>
-            ):
-            <div className='absolute mt-[-2.3rem] right-[2rem] flex gap-3 '>
+            ) :
+              <div className='absolute mt-[-2.3rem] right-[2rem] flex gap-3 '>
 
                 <MonitorOff className=" w-5 text-red-500" />
-              <MicOff   className='w-5'/>
+                <MicOff className='w-5' />
 
-              <Fullscreen/>
-            </div>
+                <Fullscreen />
+              </div>
             }
           </div>
         </div>
       </div>
 
-      
+
     </div>
   );
 };

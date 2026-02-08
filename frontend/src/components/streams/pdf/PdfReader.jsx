@@ -8,6 +8,7 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import { Download, MoveLeft, Sun } from "lucide-react";
 import { jsPDF } from "jspdf"
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 // Set the worker file path
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -31,12 +32,10 @@ const PDFViewer = ( ) => {
     useEffect(() => {
         if (pdfRef.current) {
             setPdfScroll(pdfRef.current.scrollTop);
-            console.log(`Scroll Top: ${pdfRef.current.scrollTop}`);
         }
     }, [pdfCheck]);
 
     useEffect(() => {
-        console.log(streamData)
         setBrightness(localStorage.getItem("brightness") || 50)
         setBg(localStorage.getItem("bg") || "#f4edd2")
         setColor(localStorage.getItem("color") || "#111")
@@ -55,9 +54,7 @@ const PDFViewer = ( ) => {
         pdfRef.current.scrollTop = pdfScrollTop
 
     }, [pdfScrollTop]);
-    useEffect(() => {
-        console.log(brightness)
-    }, [brightness])
+   
 
 
 
@@ -107,16 +104,19 @@ const PDFViewer = ( ) => {
                     </button>
                 )}
                 {streamData?.senderInfo?.fullName === authUser?.fullName && (
-                    <button
+                    <Link
                         className="bg-base-content text-base-300 p-2 px-3 rounded-md"
                         onClick={() => {
                             setStartStreaming(false);
-                            setStreamData([]);
+                            // setStreamData([]);
                             endStream();
+      toast.success("Stream ended successfully");
+
                         }}
+                        to='/stream'
                     >
                         End Stream
-                    </button>
+                    </Link>
                 )}
                 <button
                     onClick={() => {

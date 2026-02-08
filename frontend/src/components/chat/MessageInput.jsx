@@ -76,7 +76,6 @@ const MessageInput = () => {
         text: y,
         image: x,
       });
-      console.log(aiMes)
       if (aiMes.trim() !== "") {
         if (streamMode ==false) {
 

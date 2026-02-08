@@ -80,7 +80,6 @@ const Dashboard = () => {
     const token = localStorage.getItem("fittrack-app-token");
     await getDashboardDetails(token).then((res) => {
       setData(res.data);
-      console.log(res.data);
       setLoading(false);
     });
   };
@@ -88,9 +87,7 @@ const Dashboard = () => {
     setLoading(true);
     const token = localStorage.getItem("fittrack-app-token");
     await getWorkouts(token, "").then((res) => {
-      console.log("HI", res)
       setTodaysWorkouts(res?.data?.todaysWorkouts);
-      console.log(res.data);
       setLoading(false);
     });
   };

@@ -19,7 +19,7 @@ import Voice_txt from "../components/Voice_txt.jsx"
 const HomePage = () => {
   const navigate = useNavigate()
   const { selectedUser, videoCall } = useChatStore();
-  const { streamMode, setStreamData, setStreamMode,startStreaming, setStartStreaming, setStreamYoutube, streamYoutube, endStream, streamStart, streamData, createStream } = useStreamStore();
+  const { streamMode, setStreamData, setStreamMode,startStreaming, setStartStreaming, setStreamYoutube, streamYoutube, endStream,   streamData, createStream } = useStreamStore();
   const { authUser, setVideoPeer } = useAuthStore();
   const [videoId, setVideoId] = useState("")
   const [title, setTitle] = useState("")
@@ -33,7 +33,6 @@ const HomePage = () => {
   const handleUpload = (data) => {
     seturl(data.fileUrl);
     // setStreamData(data) 
-    console.log("Uploaded PDF Path:", data.fileUrl);
 
   };
   const handleStartYoutubeStream = () => {
@@ -56,9 +55,7 @@ const HomePage = () => {
     // setStartYoutubeStreaming(true)
   }
   useEffect(() => {
-    seturl(streamData?.streamInfo?.url)
-    console.log("streamData", streamData)
-    streamStart()
+    seturl(streamData?.streamInfo?.url) 
   }, [streamData])
 
 

@@ -27,7 +27,6 @@ export const useStreamStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
 
     socket.on("stream", async (data) => {
-      console.log(data)
       if (data.stopTime == null) {
         set({ streamData: data })
 
@@ -66,7 +65,6 @@ export const useStreamStore = create((set, get) => ({
     return new Promise(async (resolve, reject) => {
       try {
         const res = await axiosInstance.post("/stream/create-stream", data);
-        console.log(res)
         set({ streamData: res.data });
         resolve(res)
         toast.success("Stream created successfully");
@@ -84,10 +82,9 @@ export const useStreamStore = create((set, get) => ({
       const selectedUser = useChatStore.getState().selectedUser;
  
         const res = await axiosInstance.get(`/stream/get-specific-stream/${id}`)
-        const allStream = await axiosInstance.get(`/stream/get-all-stream/${selectedUser._id}`)  
-          console.log("here ", res.data)
+        const allStream = await axiosInstance.get(`/stream/get-all-stream/${selectedUser._id}`)   
           set({ streamData: { ...res.data, allStream } })
-          console.log({ ...res.data[0], allStream: allStream.data })
+           
         
         resolve(res)
         toast.success("Stream created successfully");  
@@ -107,15 +104,11 @@ export const useStreamStore = create((set, get) => ({
 
       const res = await axiosInstance.get(`/stream/get-stream/${selectedUser._id}`)
       const allStream = await axiosInstance.get(`/stream/get-all-stream/${selectedUser._id}`)
-      console.log("check", res)
-      if (res.data.length) {
-        console.log("here ", res.data)
-        set({ streamData: { ...res.data[0], allStream } })
-        console.log({ ...res.data[0], allStream })
-      }
-      else {
-        set({ streamData: {allStream} })
-      }
+     
+    
+        set({ streamData: { ...res.data, allStream } })
+        console.log({ ...res.data, allStream })
+      
     }
     catch (error) {
       set({ streamData: [] })
@@ -131,8 +124,7 @@ export const useStreamStore = create((set, get) => ({
     try {
       const selectedUser = useChatStore.getState().selectedUser;
       const res = await axiosInstance.get(`/stream/end-stream/${selectedUser._id}`)
-       
-      toast.success("Stream ended successfully");
+       set({ streamData: res })
     } catch (error) {
       toast.error("Couldn't end the stream");
     }

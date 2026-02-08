@@ -7,6 +7,7 @@ import {  MoveLeft, PictureInPicture,   PictureInPicture2Icon  } from "lucide-re
 import { jsPDF } from "jspdf"
 import { Link, useNavigate } from "react-router-dom";
 import Loader from '../../../components/Loader'; 
+import toast from "react-hot-toast";
 const YouTubePlayer = () => {
   const navigate = useNavigate()
   const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming,getStream , endStream, streamData } = useStreamStore()
@@ -31,7 +32,6 @@ const YouTubePlayer = () => {
  
 
   useEffect(() => {
-    console.log(pdfScrollTop)
     if (playerRef.current && pdfScrollTop>2) {
       playerRef.current?.seekTo(pdfScrollTop, true);
     }
@@ -85,19 +85,15 @@ const YouTubePlayer = () => {
 
 
   useEffect(() => {
-    console.log(brightness)
   }, [brightness])
 
 
 
   useEffect(() => {
-    console.log(url)
     if (!url) {
-      console.log(streamData?.streamInfo?.url)
       setVideoId(streamData?.streamInfo?.url)
     }
     try {
-      console.log("videoId", videoId)
       const loadYouTubeAPI = () => {
         const script = document.createElement("script");
         script.src = "https://www.youtube.com/iframe_api";
@@ -126,10 +122,8 @@ const YouTubePlayer = () => {
     setLoading(true)
     try {
 
-      console.log(videoId)
       const url = new URL(videoId);
       const videoIdParam = url.searchParams.get("v");
-      console.log(videoIdParam)
       playerRef.current = new window.YT.Player("player", {
         videoId: videoIdParam,
         events: {
@@ -204,8 +198,10 @@ const YouTubePlayer = () => {
               <button
                 className="bg-base-content text-base-300 p-2 px-3 rounded-md"
                 onClick={() => {
-                  setStreamData([]);
+                  // setStreamData([]);
                   endStream(); 
+                        toast.success("Stream ended successfully");
+
                   getStream();
                   navigate("/stream")
                 }}

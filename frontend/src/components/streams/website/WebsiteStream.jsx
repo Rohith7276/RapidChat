@@ -23,12 +23,10 @@ const WebsiteViewer = () => {
   useEffect(() => {
     if (webRef.current) {
       setPdfScroll(webRef.current.scrollTop);
-      console.log(`Scroll Top: ${webRef.current.scrollTop}`);
     }
   }, [pdfCheck]);
 
   useEffect(() => {
-    console.log("pdfScrollTop", pdfScrollTop)
     if (webRef.current)
       webRef.current.scrollTop = pdfScrollTop
 
@@ -43,7 +41,6 @@ const WebsiteViewer = () => {
       return;
     }
     let formattedUrl = url.trim();
-    console.log("formattedUrl", formattedUrl)
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = 'https://' + formattedUrl;
     }
@@ -74,7 +71,7 @@ const WebsiteViewer = () => {
             className="w-full h-full"
             onError={() => { 
               toast.error("URL is not working/valid. Please try another URL."); 
-              setStreamData([]);
+              // setStreamData([]);
               endStream();
             }}
           ></iframe>
@@ -91,16 +88,19 @@ const WebsiteViewer = () => {
             </button>
           )}
           {streamData?.senderInfo?.fullName === authUser?.fullName && (
-            <button
+            <Link
               className="bg-base-content text-base-300 p-2 px-3 rounded-md"
               onClick={() => {
                 setStartStreaming(false);
-                setStreamData([]);
+                // setStreamData([]);
                 endStream();
+                      toast.success("Stream ended successfully");
+                
               }}
+              to='/stream'
             >
               End Stream
-            </button>
+            </Link>
           )}
         </div>
       )

@@ -1,5 +1,6 @@
 import Peer from 'peerjs';
 import { BotMessageSquare, Copy, Phone, PhoneOff, Maximize } from 'lucide-react';
+import { useChatStore } from '../../store/useChatStore';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useImperativeHandle } from 'react';
@@ -8,12 +9,14 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const videoContainerRef = useRef(null);
+  const [Calling, setCalling] = useState(false)
   const audioRef = useRef(null);
   const audioRef2 = useRef(null);
   const peerRef = useRef(null);
   const localStreamRef = useRef(null);
   const currentCallRef = useRef(null);
-  const { peer, peerId, getPeerId, friendPeerId, removePeerId } = useAuthStore()
+  const {selectedUser} = useChatStore()
+  const { peer, peerId, getPeerId,onlineUsers, friendPeerId, removePeerId } = useAuthStore()
   const [localId, setLocalId] = useState('');
   const [remoteId, setRemoteId] = useState('');
   const [callActive, setCallActive] = useState(false);
@@ -25,7 +28,6 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
 
   useEffect(() => {
     const initializePeer = async () => {
-      console.log("initializing")
       try {
         const localStream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480 },
@@ -37,7 +39,6 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
         localStreamRef.current = localStream;
 
         peerRef.current = peer;
-        console.log(peer)
         setLocalId(peerId)
 
         setIsInitialized(true);
@@ -76,16 +77,13 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
 
 
       } catch (error) {
-        console.log(error)
         handleError('Failed to access camera/microphone', error);
       }
     };
-
     initializePeer();
-    return () => {
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-      }
+    return () => {  
+        localStreamRef?.current?.getTracks().forEach(track => track.stop());
+       
     }
   }, []);
 
@@ -127,7 +125,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
   const setupCall = (call) => {
     currentCallRef.current = call;
     setConnecting(false);
-
+    setCalling(true)
 
     call.on('stream', (remoteStream) => {
       if (remoteVideoRef.current) {
@@ -140,6 +138,8 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
                 audioRef2.current.currentTime = 0;  // ⏮ Reset to start
               }
       }
+      setCalling(false)
+      setCallActive(true);
     });
 
     call.on('close', () => {
@@ -149,16 +149,13 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
     call.on('error', () => {
       endCall();
     });
-    setCallActive(true);
 
   };
   useEffect(() => {
-    console.log("friend id", friendPeerId)
     setRemoteId(friendPeerId)
 
   }, [friendPeerId])
   useEffect(() => {
-    console.log("use effect ", remoteId)
     const call = () => { 
       try {
         setConnecting(true);
@@ -166,7 +163,6 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
         // 1. Start media call
         const call = peerRef.current.call(remoteId, localStreamRef.current);
         setupCall(call); // ✅ Setup the media call immediately
-        console.log(call)
         // 2. Open data connection to receive rejection (if any)
         const conn = peerRef.current.connect(remoteId);
         conn.on('data', (data) => {
@@ -199,7 +195,6 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
 
   const startCall = () => {
     if (audioRef.current) {
-      console.log("ringing")
       audioRef.current.muted = false;
       audioRef.current.volume = 1.0;
       audioRef.current.loop = true;      // 🔁 Enable looping
@@ -207,7 +202,6 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
       audioRef.current.play().catch(err => console.error("Playback error:", err));
     }
     else {
-      console.log("audo is ", audioRef.current)
     }
     removePeerId()
     getPeerId()
@@ -254,10 +248,13 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
 
  
 
-  const getCallStatus = () => {
+  const getCallStatus = () => { 
+    if (!onlineUsers.includes(selectedUser._id)) return 'User is offline';
     if (!isInitialized) return 'Initializing...';
     if (connecting) return 'Connecting...';
+    if(Calling) return "Calling..."
     if (callActive) return 'Connected';
+    
     return 'Ready to connect';
   };
 
@@ -268,7 +265,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
       <div className="max-w-6xl mx-auto">
         {/* Notification */}
         {notification && (
-          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-base-content text-white px-4 py-2 rounded shadow-lg z-50">
+          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-base-100 text-white px-4 py-2 rounded shadow-lg z-50">
             {notification}
           </div>
         )}
@@ -291,15 +288,15 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
           ref={videoContainerRef}
           className="  rounded-lg shadow-lg p-6 mb-6"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="flex h-full w-full justify-center items-center gap-6">
             {/* Local Video */}
-            <div className="relative">
+            <div className="relative w-full">
               <video
                 ref={localVideoRef}
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-64 lg:h-80 bg-gray-900 rounded-lg object-cover"
+                className="w-full h-full   bg-gray-900 rounded-lg object-cover"
               />
               <div className="absolute bottom-3 left-3 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
                 You
@@ -307,16 +304,16 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
             </div>
 
             {/* Remote Video */}
-            <div className="relative">
+            <div className="relative w-full">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full h-64 lg:h-80 bg-gray-900 rounded-lg object-cover"
+                className="w-full h-full lg:h-full bg-gray-900 rounded-lg object-cover"
               />
-              {!callActive && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-80 rounded-lg">
-                  <div className="text-center text-white">
+              {(!callActive  ) && (
+                <div className="absolute inset-0 flex items-center justify-center  h-[200%] mt-[-4.8rem] bg-gray-800 bg-opacity-80 rounded-lg">
+                  <div className="text-center  text-white">
                     <BotMessageSquare className="w-12 h-12 mx-auto mb-4 opacity-60" />
                     <p className="text-lg font-medium">Waiting for connection</p>
                     <p className="text-sm opacity-80">Start calling with Rapid Calls</p>
@@ -331,27 +328,28 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
         </div>
 
         {/* Controls */}
-        <div className=" rounded-lg shadow-lg p-6">
+        <div className=" rounded-lg  w-full shadow-lg p-6">
 
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 mt-6">
-            <button
+          <div className="flex m-auto w-fit flex-wrap gap-3 mt-6">
+           {!callActive && <button
               onClick={startCall}
-              disabled={!isInitialized || callActive || connecting}
+              disabled={!isInitialized || callActive || connecting || !onlineUsers.includes(selectedUser._id)}
               className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Phone className="w-4 h-4" />
               {connecting ? 'Connecting...' : 'Start Call'}
-            </button>
+            </button>}
 
-            <button
-              onClick={endCall}
+            {callActive && <button
+              onClick={endCall} 
+
               className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <PhoneOff className="w-4 h-4" />
               End Call
-            </button>
+            </button>}
 
             <button
               onClick={handleFullscreen}

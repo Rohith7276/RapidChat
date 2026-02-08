@@ -28,12 +28,13 @@ const UploadPDF = () => {
     const uploadFile = async () => {
         setLoading(true);
         try {
-            if (!file) return toast.error("Please select a file!");
+            if (!file){
+            setLoading(false);
+                 return toast.error("Please select a file!");}
 
             const formData = new FormData();
             formData.append("pdf", file);
             const res = await axiosInstance.post(`/stream/uploadPdf`, formData);
-            console.log("deko", res)
             const uploadData = { title, description: desc, name: title, url: res.data.url, groupId: selectedUser._id, recieverId: selectedUser._id, data: res.data.text, type: "pdf" }
             endStream()
             createStream(uploadData).then(res =>
@@ -43,9 +44,9 @@ const UploadPDF = () => {
         } catch (err) {
             toast.error("File upload failed");
         }
-        finally {
-            setLoading(false);
-        }
+        // finally {
+        //     setLoading(false);
+        // }
     };
 
     return (

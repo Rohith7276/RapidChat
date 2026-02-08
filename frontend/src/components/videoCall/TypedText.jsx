@@ -6,7 +6,6 @@ const TypedText = ({ texts, speed = 100 }) => {
   const [charIndex, setCharIndex] = useState(0);
   const line = useRef(null)
   useEffect(() => {
-    console.log(texts?.data)
     if (texts.data == undefined || texts?.data?.length === 0 || texts?.length === 0) return;
     line.current.style.display = "inline"
     const currentText = texts?.data[textIndex];

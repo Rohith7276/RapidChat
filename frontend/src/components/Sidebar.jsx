@@ -1,4 +1,4 @@
-import { useEffect,  useState } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useStreamStore } from '../store/useStreamStore';
 
@@ -11,34 +11,32 @@ const Sidebar = () => {
   const { getStreamCreation, streamMode } = useStreamStore();
 
   const { onlineUsers, authUser } = useAuthStore();
-  const [friendId, setFriendId] = useState("");  
+  const [friendId, setFriendId] = useState("");
 
-  useEffect(() => { 
-    if(sidebarRefresh) {
+  useEffect(() => {
+    if (sidebarRefresh) {
       getUsers(); 
-      console.log(authUser)
-      console.log('refreshih', sidebarRefresh)
       setSidebarRefresh(false)
     }
-  }, [sidebarRefresh ]); 
+  }, [sidebarRefresh]);
 
-  useEffect(() => {  
-      getNotifications();
-      getStreamCreation();
-      getUsers(); 
-  }, [  ]); 
+  useEffect(() => {
+    getNotifications();
+    getStreamCreation();
+    getUsers();
+  }, []);
 
   const filteredUsers = [...users, ...groups];
 
-  if (isUsersLoading ) return <SidebarSkeleton />;
+  if (isUsersLoading) return <SidebarSkeleton />;
 
 
   return (
-    <aside className={`h-full w-24 ${streamMode?" ":"lg:w-72"} border-r border-base-300 flex flex-col transition-all duration-200`}>
+    <aside className={`h-full w-24 ${streamMode ? " " : "lg:w-72"} border-r border-base-300 flex flex-col transition-all duration-200`}>
       <div className="border-b border-base-300 w-full p-5">
         <div className="flex items-center gap-2">
           <Users className="size-6" />
-          <span className={`hidden ${streamMode?"":"lg:block "} font-medium  `}>Contacts</span>
+          <span className={`hidden ${streamMode ? "" : "lg:block "} font-medium  `}>Contacts</span>
         </div>
         {/* <input type="text" onChange={(e) => setFriendId(e.target.value)} />
         <button onClick={handleAddFriend}>add</button> */}
@@ -61,21 +59,39 @@ const Sidebar = () => {
                 alt={user.name}
                 className="size-12 object-cover rounded-full brightness-95"
               />
-              {onlineUsers.includes(user._id) && (
+              {onlineUsers.includes(user._id) ? (
                 <span
                   className="absolute bottom-0 right-0 size-3 bg-green-500 
+                  rounded-full ring-2 ring-zinc-900"
+                />
+              ):
+              (
+                <span
+                  className="absolute bottom-0 right-0 size-3 bg-gray-500 
                   rounded-full ring-2 ring-zinc-900"
                 />
               )}
             </div>
 
             {/* User info - only visible on larger screens */}
-            <div className={`hidden ${streamMode?"":"lg:block "} text-left min-w-0` }>
+            <div className={`hidden ${streamMode ? "" : "lg:block "} text-left min-w-0`}>
               <div className="font-medium truncate">{user.fullName || user.name}</div>
-              <div className="text-sm text-zinc-400 flex">
-                {/* {onlineUsers.includes(user._id) ? "Online" : "Offline"} */}
-                {user.name && <span className="text-green-400 font-semibold pr-1">{user?.timeline?.senderId == authUser._id? "You :" : "Idk :"}</span>}
-                <div className="overflow-x-hidden flex "><span>{user?.timeline?.text?.slice(0,20)}</span> <span> {user?.timeline?.text?.length >=20 ? "...": ""}</span></div>
+              <div className="text-sm   text-zinc-400 flex">
+                {/* {onlineUsers.includes(user._id) ? "Online" : "Offline"}  */}
+         
+                {user.name && <span className="text-green-400 font-semibold pr-1">{user?.timeline?.senderId == authUser._id ? "You :" : user?.timeline?.senderInfo?.fullname }</span>}
+                <div className="overflow-x-hidden flex "><span>{
+                
+                <p dangerouslySetInnerHTML={{
+                    __html: user?.timeline?.text?.slice(0, 20)
+                      .replace(/^###\s/gm, "<h3>") // headings
+                      .replace(/^>\s?/gm, "<blockquote>")
+                      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+                      .replace(/\*(.*?)\*/g, "<i>$1</i>")
+                      .replace(/---/g, "<hr>")
+                      .replace(/\n/g, "<br/>"),
+                  }}></p>
+                }</span> <span> {user?.timeline?.text?.length >= 20 ? "..." : ""}</span></div>
               </div>
             </div>
           </button>

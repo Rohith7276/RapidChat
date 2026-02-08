@@ -32,7 +32,6 @@ const ElevenLabsTTS = () => {
                     responseType: 'blob',
                 }
             );
-console.log(response.data)
             const audioBlob = new Blob([response.data], { type: 'audio/mpeg' });
             const audioUrl = URL.createObjectURL(audioBlob);
             const audio = new Audio(audioUrl);

@@ -51,6 +51,7 @@ export const getUsers = async (req, res) => {
             {
               $project: {
                 fullName: 1, 
+                email: 1,
                 profilePic: 1,
                 timeline: { $arrayElemAt: ["$timeline", -1] } // Get the last message for each friend
               }
@@ -199,8 +200,7 @@ export const sendMessage = async (req, res) => {
     });
 
     await newMessage.save();
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    console.log(receiverId)
+    const receiverSocketId = getReceiverSocketId(receiverId); 
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
       io.to(receiverSocketId).emit("notification", "newMessage");

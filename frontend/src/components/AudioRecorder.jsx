@@ -35,8 +35,7 @@ const SpeechToText = () => {
       }
 
       if (finalTranscript && finalTranscript.toLowerCase().includes("rapid")) {
-        setTranscript(finalTranscript);
-        console.log("Final Transcript:", finalTranscript);
+        setTranscript(finalTranscript); 
         // if(finalTranscript.toLowerCase().includes("rapid"))
         sendAiText(finalTranscript);
         setTimeout(() => {
@@ -51,8 +50,7 @@ const SpeechToText = () => {
     };
 
     recognitionInstance.onend = () => {
-      if (isListening) {
-console.log('listen')
+      if (isListening) { 
         recognitionInstance.start();
       }
     };

@@ -12,6 +12,7 @@ import PdfParse from "pdf-parse";
 import {
     Supadata,
 } from '@supadata/js';
+import mongoose from "mongoose";
 
 // Initialize the client
 const supadata = new Supadata({
@@ -20,22 +21,17 @@ const supadata = new Supadata({
 
 export const getVideoId = async (req, res) => {
     try {
-        console.log("hello guys")
         const { friendId, videoId, send } = req.body
-        console.log(friendId, videoId, send)
         if (send == "1") {
             const receiverSocketId = getReceiverSocketId(friendId);
             if (receiverSocketId) {
                 io.to(receiverSocketId).emit("takeVideoId", videoId);
-                console.log("Sent from send 1" + videoId)
             }
         }
         else {
             const receiverSocketId = getReceiverSocketId(friendId);
-            console.log(receiverSocketId)
             if (receiverSocketId) {
                 io.to(receiverSocketId).emit("giveVideoId");
-                console.log("Sent from send 0")
             }
         }
     } catch (error) {
@@ -46,7 +42,6 @@ export const getVideoId = async (req, res) => {
 
 export const uploadPdf = async (req, res) => {
     try {
-        console.log("upload pdf", req.file)
         const uploadResponse = await cloudinary.uploader.upload(req.file.path, {
             resource_type: 'raw', // For non-image files like PDFs
         });
@@ -89,19 +84,14 @@ export const createStream = async (req, res) => {
 
             // Check if we got a transcript directly or a job ID for async processing
             if ('jobId' in transcriptResult) {
-                // For large files, we get a job ID and need to poll for results
-                console.log(`Started transcript job: ${transcriptResult.jobId}`);
+                // For large files, we get a job ID and need to poll for results 
 
                 // Poll for job status
                 const jobResult = await supadata.transcript.getJobStatus(
                     transcriptResult.jobId
                 );
-                if (jobResult.status === 'completed') {
-                    console.log('Transcript:', jobResult.result);
-                } else if (jobResult.status === 'failed') {
+                if (jobResult.status === 'failed') {
                     console.error('Transcript failed:', jobResult.error);
-                } else {
-                    console.log('Job status:', jobResult.status); // 'queued' or 'active'
                 }
             } else {
                 // For smaller files, we get the transcript directly
@@ -124,7 +114,7 @@ export const createStream = async (req, res) => {
         let quizData = null;
         if (type == "youtube" || type == "pdf") {
             quizData = await getResponse(
-                `Give me only valid JSON, without any Markdown fences (no \`\`\`), no comments, no trailing commas, no explanations. The JSON must be directly usable with JSON.parse of 10 number of questions for a quiz in format of:
+                `Give me only valid JSON, without any Markdown fences (no \`\`\`),no spaces, no comments, no trailing commas, no explanations. The JSON must be directly usable with JSON.parse of 10 number of questions for a quiz in format of:
 {
 	"quiz":[
 		{
@@ -180,7 +170,6 @@ regarding the information data : ${data.slice(0, 5000)}
 
             );
         }
-        console.log(quizData)
 
         const stream = await Stream.create({
             streamerId: userId,
@@ -194,6 +183,7 @@ regarding the information data : ${data.slice(0, 5000)}
                 title,
                 description,
                 quizData: quizData.slice(0, 5800),
+                leaderboard: ""
             },
             senderInfo: {
                 fullName: user.fullName,
@@ -238,7 +228,6 @@ export const streamControls = async (req, res) => {
     try {
         const { id: friendId, streamId, action } = req.params;
         const userId = req.user._id;
-        console.log(friendId, streamId, action);
         let friend = await User.findById(friendId);
         if (!friend) {
             friend = await Group.findById(friendId)
@@ -247,7 +236,6 @@ export const streamControls = async (req, res) => {
 
         const stream = await Stream.findById(streamId);
         const receiverSocketId = getReceiverSocketId(friend._id);
-        console.log(userId, friendId)
         if (!stream) return res.status(400).json({ message: "Stream not found" });
 
         if (!receiverSocketId) {
@@ -273,7 +261,7 @@ export const getStream = async (req, res) => {
             friend = await Group.findById(friendId)
         }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
-        const streams = await Stream.find(
+        const streams = await Stream.findOne(
             {
                 $and: [{
                     $or: [{
@@ -287,7 +275,6 @@ export const getStream = async (req, res) => {
                     stopTime: null
                 }]
             });
-        console.log(streams)
         return res.status(200).json(streams);
     } catch (error) {
         console.error("Error in getStream: ", error.message);
@@ -317,7 +304,6 @@ export const getAllStream = async (req, res) => {
                 },]
 
             });
-        console.log(streams)
         return res.status(200).json(streams);
     } catch (error) {
         console.error("Error in getAllStream: ", error.message);
@@ -347,7 +333,6 @@ export const geSpecificStream = async (req, res) => {
         });
 
 
-        console.log(streams)
         return res.status(200).json(stream);
     } catch (error) {
         console.error("Error in getSpecificStream: ", error.message);
@@ -359,7 +344,6 @@ export const geSpecificStream = async (req, res) => {
 
 export const endStream = async (req, res) => {
     try {
-        console.log("Hi")
         let { id: friendId } = req.params;
         const userId = req.user._id;
         if (!friendId) {
@@ -371,7 +355,7 @@ export const endStream = async (req, res) => {
         }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
 
-        const streams = await Stream.findOneAndUpdate(
+        await Stream.findOneAndUpdate(
             {
                 $and: [
                     {
@@ -387,9 +371,18 @@ export const endStream = async (req, res) => {
             { $set: { stopTime: new Date() } },
             { new: true }
         );
-        console.log(streams)
 
+        const streams = await Stream.find(
+            {
+                $or: [{
+                    $and: [{ streamerId: userId }, { receiverId: friend._id }]
+                }, {
+                    $and: [{ receiverId: userId }, { streamerId: friend._id }]
+                }, {
+                    groupId: friendId
+                },]
 
+            });
         const receiverSocketId = getReceiverSocketId(friendId);
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("stream", streams);
@@ -400,22 +393,34 @@ export const endStream = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 }
+
 export const updateStream = async (req, res) => {
     try {
         let { id: streamId, points } = req.params;
         const userId = req.user._id;
         const user = await User.findById(userId);
-        const stream = await Stream.find(
+        let stream = await Stream.findOne(
             { _id: streamId }
         );
-        console.log(stream)
+        let friend = null;
+        if (mongoose.Types.ObjectId.isValid(stream.receiverId)) {
+            friend = await User.findById(stream.receiverId);
+        }
+
+        // console.log(friend )
+        let friendId = null;
+        if (mongoose.Types.ObjectId.isValid(stream.receiverId)) {
+            friendId = await Group.findById(stream.receiverId);
+        }
+
+        // console.log(stream)
         let data = null
-        if (stream[0].streamInfo.leaderboard != "") {
-            const temp = JSON.parse(stream[0].streamInfo?.leaderboard)
-            data = [...temp, { name: user.fullName, points: points, badge: "" }]
+        if (stream.streamInfo.leaderboard != "") {
+            const temp = JSON.parse(stream.streamInfo?.leaderboard)
+            data = [...temp, { name: user.fullName, points: points, badge: "", userId: userId }]
         }
         else {
-            data = [{ name: user.fullName, points: points, badge: "" }]
+            data = [{ name: user.fullName, points: points, badge: "", userId: userId }]
         }
         data.sort((a, b) => b.points - a.points);
 
@@ -431,21 +436,36 @@ export const updateStream = async (req, res) => {
                 data[2].badge = "Bronze"
 
             }
-            else{
+            else {
                 data[index].badge = "Keep Learning"
             }
         }
 
-        console.log(data)
 
-        const streams = await Stream.findOneAndUpdate(
+        const streame = await Stream.findOneAndUpdate(
             { _id: streamId },
             { $set: { "streamInfo.leaderboard": JSON.stringify(data) } },
-            { new: true }
+
         );
-        console.log(streams)
- 
-        return res.status(200).json(streams);
+        const streams = await Stream.find(
+            {
+                $or: [{
+                    $and: [{ streamerId: userId }, { receiverId: friend._id }]
+                }, {
+                    $and: [{ receiverId: userId }, { streamerId: friend._id }]
+                }, {
+                    groupId: friendId
+                },]
+
+            });
+        console.log({
+            ...streame._doc, allStream: streams
+        })
+        const objee = {
+            ...streame._doc, allStream: streams
+        }
+
+        return res.status(200).json(objee);
     } catch (error) {
         console.error("Error in endStream: ", error.message);
         res.status(500).json({ error: "Internal server error" });

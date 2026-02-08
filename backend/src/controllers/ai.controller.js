@@ -29,8 +29,7 @@ export const AiChat = async (req, res) => {
 
     let msg = newMessage.toJSON();
     if (groupId == null) {
-      const receiverSocketId = getReceiverSocketId(receiverId);
-      console.log("  ai ", receiverSocketId, receiverId)
+      const receiverSocketId = getReceiverSocketId(receiverId); 
 
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("newMessage", msg);
@@ -40,8 +39,7 @@ export const AiChat = async (req, res) => {
       io.to(groupId).emit("receiveGroupMessage", msg);
     }
     res.status(200).json(newMessage);
-  } catch (error) {
-    console.log("Error in ai chat controller", error.message);
+  } catch (error) { 
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
@@ -64,8 +62,7 @@ export const AiSummary = async (x, isPdf) => {
       return response;
     } 
   }
-  catch (error) {
-    console.log("Error in ai summary controller", error?.message);
+  catch (error) { 
     return { message: "Internal Server Error" };
   }
 }
@@ -73,10 +70,7 @@ export const AiSummary = async (x, isPdf) => {
 export const streamAi = async (req, res) => {
   try {
     const { data, input } = req.body
-    const { receiverId, groupId } = req.body;
-    // let text = `You are an chat app Rapid AI named Rapid AI. A user named ${user} sent ${input} to you, reply accordingly`;
-    console.log("data = ", data)
-console.log(data , input)
+    const { receiverId, groupId } = req.body;  
     const response = await getResponse( input + "\"\n and here is the data for reference:\n" + data );
 
     const newMessage = new Message({
@@ -97,8 +91,7 @@ console.log(data , input)
 
     let msg = newMessage.toJSON();
     if (groupId == null) {
-      const receiverSocketId = getReceiverSocketId(receiverId);
-      console.log("stream ai ", receiverSocketId, receiverId)
+      const receiverSocketId = getReceiverSocketId(receiverId); 
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("newMessage", msg);
       }
