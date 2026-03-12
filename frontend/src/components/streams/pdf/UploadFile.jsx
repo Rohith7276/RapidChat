@@ -55,7 +55,7 @@ const UploadPDF = () => {
                     <Link className=" btn" to='/stream'><MoveLeft /> </Link>
                 </div>
             <div className={` ${(!loading) ? "block" : "hidden"} p-4 space-y-4 flex flex-col gap-5 `}>
-                <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">Stream N Chat</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
+                <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">Rapid Chat</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
 
                 <input
                     type="text"

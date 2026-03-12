@@ -35,6 +35,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get("/messages/users");
       set({ users: [...res.data] });
+      console.log(res)
     } catch (error) {
       toast.error(error.response.data.message);
     } finally {
@@ -44,7 +45,7 @@ export const useChatStore = create((set, get) => ({
 
   addFriend: async (friendId) => {
     try {
-      const res = await axiosInstance.patch(`/messages/add-friend/${friendId}`);
+      const res = await axiosInstance.patch(`/auth/add-friend/${friendId}`);
       set({ users: res.data.updatedFriends });
       toast.success("Friend added successfully");
       set({ sidebarRefresh: true })
@@ -55,7 +56,7 @@ export const useChatStore = create((set, get) => ({
 
   removeFriend: async (friendId) => {
     try {
-      const res = await axiosInstance.patch(`/messages/add-friend/${friendId}`);
+      const res = await axiosInstance.patch(`/auth/remove-friend/${friendId}`);
       set({ users: res.data.updatedFriends });
       toast.success("Friend removed successfully");
       set({ sidebarRefresh: true })

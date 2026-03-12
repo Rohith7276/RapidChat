@@ -172,7 +172,7 @@ const chatContainer = () => {
         </div>
       </div>}
 
-      <div className={`flex-1  overflow-y-auto p-4 space-y-4 ${videoCall ? "hidden" : ""}`}
+      <div className={`flex-1  overflow-y-auto overflow-x-clip p-4 space-y-4 ${videoCall ? "hidden" : ""}`}
         ref={containerRef} onScroll={handleScroll}  >
 
         {/* {message.length && showLoading ?
@@ -193,7 +193,7 @@ const chatContainer = () => {
             <div className="size-11 mx-2 rounded-lg bg-primary/10 flex items-center justify-center">
               <BotMessageSquare className="w-6 h-6 text-primary " />
             </div>
-            <h1 className="font-bold text-2xl">Stream N Chat! </h1>
+            <h1 className="font-bold text-2xl">Rapid Chat! </h1>
           </div>
         }
         {message.map((message, index) => (
@@ -238,7 +238,7 @@ const chatContainer = () => {
                       className="sm:max-w-[200px] hover:cursor-pointer rounded-md mb-2"
                     />
                   )}
-                  {message.text && <p className="w-full text-clip" dangerouslySetInnerHTML={{
+                  {message.text && <p className="w-full text-clip overflow-clip" dangerouslySetInnerHTML={{
                     __html: message.text
                       .replace(/^###\s/gm, "<h3>") // headings
                       .replace(/^>\s?/gm, "<blockquote>")

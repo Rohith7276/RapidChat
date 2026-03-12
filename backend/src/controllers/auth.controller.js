@@ -1,7 +1,7 @@
-import { generateToken } from "../lib/utils.js"; 
+import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
-import Message from "../models/message.model.js"; 
-import { cloudinary } from "../lib/cloudinary.js"; 
+import Message from "../models/message.model.js";
+import { cloudinary } from "../lib/cloudinary.js";
 import bcrypt from "bcryptjs";
 // import  { uploadOnCloudinary } from "../lib/cloudinary.js";
 
@@ -99,7 +99,7 @@ export const updateProfile = async (req, res) => {
     }
 
     // console.log("uploadResponse");
-    const uploadResponse = await cloudinary.uploader.upload(profilePic); 
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { profilePic: uploadResponse.url },
@@ -159,7 +159,7 @@ export const addFriend = async (req, res) => {
 
     // user.friends.push(friend._id);
     // await user.save();
-    res.status(201).json({updatedFriends: user.friends });
+    res.status(201).json({ updatedFriends: user.friends });
   }
   catch (error) {
     console.error("Error in addFriend: ", error.message)
@@ -187,6 +187,13 @@ export const removeFriend = async (req, res) => {
       ],
     })
     if (!messages) return res.status(404).json({ message: "Messages not deleted" })
+    let streams = await Message.deleteMany({
+      $or: [
+        { streamerId: user._id, receiverId: friend._id },
+        { streamerId: friend._id, receiverId: user._id },
+      ],
+    })
+    if (!streams) return res.status(404).json({ message: "Streams not deleted" })
     const updatedUser = await User.findByIdAndUpdate(
       user?._id, {
       $set: {
@@ -207,7 +214,7 @@ export const removeFriend = async (req, res) => {
     ).select("-password");
     if (!updatedFriend) return res.status(404).json({ message: "Friend not removed" })
 
-     
+
     res.status(201).json({ updatedFriends: user.friends });
   }
   catch (error) {

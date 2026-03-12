@@ -1,6 +1,6 @@
 import User from "../models/user.model.js";
 import Message from "../models/message.model.js";
-import mongoose from "mongoose"; 
+import mongoose from "mongoose";
 import { cloudinary } from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 // import  client  from "../lib/redisClient.js";
@@ -31,7 +31,7 @@ export const getUsers = async (req, res) => {
                     $match: {
                       $expr: {
                         $or: [
-                          {$and: [{ $eq: ["$senderId", "$$userId"] }, {$eq: ["$group", false]} ]},
+                          { $and: [{ $eq: ["$senderId", "$$userId"] }, { $eq: ["$group", false] }] },
                           { $eq: ["$receiverId", "$$userId"] }
                         ]
                       }
@@ -41,7 +41,7 @@ export const getUsers = async (req, res) => {
                     $project: {
                       createdAt: 1,
                       text: 1,
-                      senderId: 1, 
+                      senderId: 1,
                     }
                   }
                 ],
@@ -50,7 +50,7 @@ export const getUsers = async (req, res) => {
             },
             {
               $project: {
-                fullName: 1, 
+                fullName: 1,
                 email: 1,
                 profilePic: 1,
                 timeline: { $arrayElemAt: ["$timeline", -1] } // Get the last message for each friend
@@ -58,13 +58,13 @@ export const getUsers = async (req, res) => {
             }
           ],
         }
-      }, 
+      },
       {
         $project: {
           friends: 1, // Only include friend details in output 
         },
       },
-    ]); 
+    ]);
     const groups = await User.aggregate([
       {
         $match: {
@@ -77,44 +77,67 @@ export const getUsers = async (req, res) => {
           localField: "groups",
           foreignField: "_id",
           as: "userGroups",
-          pipeline: [
+          pipeline: [ 
+            {
+              $lookup: {
+                from: "users",
+                localField: "members",
+                foreignField: "_id",
+                as: "membersInfo",
+                pipeline: [
+                  {
+                    $project: {
+                      _id: 1,
+                      fullName: 1,
+                      profilePic: 1,
+                      email: 1,
+                    }
+                  }
+                ]
+              }
+            },
+ 
             {
               $lookup: {
                 from: "messages",
-                let: { groupId: { $toString: "$_id" }},  
+                let: { groupId: { $toString: "$_id" } },
                 pipeline: [
                   {
                     $match: {
-                      $expr: { $eq: ["$groupId",  "$$groupId"  ] }   
+                      $expr: { $eq: ["$groupId", "$$groupId"] }
                     }
                   },
-                  { $sort: { createdAt: -1 } },  
+                  { $sort: { createdAt: -1 } },
                   {
                     $project: {
                       createdAt: 1,
                       text: 1,
                       senderId: 1,
-                      senderInfo: 1, 
+                      senderInfo: 1,
                     }
                   }
                 ],
                 as: "timeline"
               }
             },
+
+            // 🔹 FINAL SHAPE
             {
               $project: {
                 _id: 1,
-                members: 1, 
                 name: 1,
                 profilePic: 1,
-                timeline: { $arrayElemAt: ["$timeline", 0] } 
+                description: 1,
+                members: 1,          // original IDs (optional)
+                membersInfo: 1,      // ✅ full objects
+                timeline: { $arrayElemAt: ["$timeline", 0] }
               }
             }
           ]
         }
       }
-       
-    ]); 
+    ]);
+
     userWithFriends[0].friends = [...userWithFriends[0].friends, ...groups[0]?.userGroups]
     if (userWithFriends[0]?.friends?.length > 0) {
       userWithFriends[0].friends.sort((a, b) =>
@@ -155,7 +178,7 @@ export const getMessages = async (req, res) => {
       ],
     })
       .sort({ createdAt: -1 })
-      .limit(page * 10) 
+      .limit(page * 10)
 
     messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     //await client.set('messages' + req.user?._id + req.params.id, JSON.stringify(messages), { EX: 60 });
@@ -200,7 +223,7 @@ export const sendMessage = async (req, res) => {
     });
 
     await newMessage.save();
-    const receiverSocketId = getReceiverSocketId(receiverId); 
+    const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
       io.to(receiverSocketId).emit("notification", "newMessage");

@@ -64,10 +64,10 @@ const ChatHeader = () => {
                   <h1 className="text-base-50 font-bold text-xl">{streamData?.streamInfo?.title}</h1>
                   <h1>{streamData?.streamInfo?.description}</h1>
                 </div>
-                <div className="flex gap-2 mt-1 items-center opacity-70  justify-center ">
+                <div className="flex gap-2 mt-1 items-center   opacity-70  justify-center ">
 
                   <h1>Created by  </h1>
-                  <img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" />
+                  <img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic || "/avatar.png"} alt="profile" />
                   <h1> {streamData?.senderInfo?.fullName}</h1>
                   <h1>
                     {"on " + new Date(streamData?.createdAt).toDateString() + " at " + formatMessageTime(new Date(streamData?.createdAt))}

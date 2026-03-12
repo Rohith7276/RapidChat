@@ -106,7 +106,7 @@ const WebsiteViewer = () => {
       )
 
         : <>
-          <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">Stream N Chat</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
+          <h1 className="text-xl font-bold flex">Stream Seamlessly using <span className="ml-2 text-base-300 invert ">Rapid Chat</span> <BotMessageSquare className="w-6 mr-2 ml-1 h-6 text-primary " />Streams</h1>
           <form onSubmit={handleSubmit} className="flex flex-col my-4 gap-2 w-full max-w-md">
 
             <input

@@ -11,7 +11,7 @@ import { useChatStore } from '../store/useChatStore';
 const MenuSection = () => {
     const menuDiv = useRef(null);
     const { logout, authUser } = useAuthStore();
-    const {addFriend} = useChatStore()
+    const { addFriend } = useChatStore()
     const [createGroup, setCreateGroup] = useState(false)
     const [friendId, setFriendId] = useState("");
     const { contextSafe } = useGSAP();
@@ -50,7 +50,7 @@ const MenuSection = () => {
 
     const handleAddFriend = () => {
         addFriend(friendId);
-      }
+    }
 
     return (
         <>
@@ -75,9 +75,16 @@ const MenuSection = () => {
                     <div className="flex items-center  px-4 py-5 gap-4 flex-col">
 
                         {authUser && (
-                            <>
-                                <input type="text" onChange={(e) => setFriendId(e.target.value)} />
-                                <button onClick={handleAddFriend}>add</button>
+                            <   >
+                                <div className='flex btn btn-sm gap-2 h-fit  p-3'>
+
+                                    <h3>Add friend</h3>
+                                    <div className='w-full flex gap-2 justify-around '>
+
+                                        <input type="text" placeholder='Enter email' className='bg-white px-2 text-black rounded-md' onChange={(e) => setFriendId(e.target.value)} />
+                                        <button onClick={handleAddFriend} className='bg-primary text-base-300 font-bold px-3 py-1 rounded-md'>Add</button>
+                                    </div>
+                                </div>
                                 <Link to={"/profile"} onClick={() => {
                                     closeAnimation()
                                 }} className={`btn btn-sm gap-2 w-full`}>
@@ -112,7 +119,7 @@ const MenuSection = () => {
                                     <LogOut className="size-5" />
                                     <span className="hidden sm:inline">Logout</span>
                                 </button>
-                            </>
+                            </ >
                         )}
                     </div>
                 </div>

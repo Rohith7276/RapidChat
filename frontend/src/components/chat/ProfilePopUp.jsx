@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { ChevronRight, HistoryIcon, Mail, Users, X } from 'lucide-react';
+import { ChevronRight, Group, GroupIcon, HistoryIcon, LucideGroup, Mail, Users, X } from 'lucide-react';
 import { gsap } from "gsap"
 import { useGSAP } from "@gsap/react";
 import { Menu } from 'lucide-react';
@@ -12,8 +12,9 @@ import { useChatStore } from "../../store/useChatStore";
 import { Link } from "react-router-dom";
 const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
     const popUp = useRef(null);
-    const { logout, authUser } = useAuthStore();
-    const { addFriend } = useChatStore()
+    console.log("see", selectedUser)
+
+    const {  addFriend, removeFriend } = useChatStore(); 
     const [createGroup, setCreateGroup] = useState(false)
     const [friendId, setFriendId] = useState("");
     const { contextSafe } = useGSAP();
@@ -68,7 +69,7 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
             display: "flex"
         })
         gsap.to(popUp.current, {
-            display: "block", 
+            display: "block",
             scale: "1"
         })
         gsap.to(backDiv, {
@@ -109,37 +110,82 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
                         <X />
                     </button>
                     <section className='flex gap-5 p-[2rem] justify-around'>
-                        <div className='flex flex-col gap-3'>
+                        <div className='flex flex-col gap-8 justify-around items-center'>
+                            <div className='flex gap-8' >
 
-                            <div className="avatar">
-                                <div className=" rounded-full relative w-[10rem]">
-                                    <img loading="blur" className="  rounded-full object-cover border-4 " src={selectedUser?.name ? selectedUser?.profilePic || "/group.png" : selectedUser?.profilePic || "/avatar.png"} alt={selectedUser?.fullName} />
+                                <div className='flex flex-col gap-3'>
+
+                                    <div className="avatar">
+                                        <div className=" rounded-full relative w-[10rem]">
+                                            <img loading="blur" className="  rounded-full object-cover border-4 " src={selectedUser?.name ? selectedUser?.profilePic || "/group.png" : selectedUser?.profilePic || "/avatar.png"} alt={selectedUser?.fullName} />
+                                        </div>
+                                    </div>
+                                    <button onClick={()=> removeFriend(selectedUser.email)} className='bg-red-700 px-1 py-2   font-bold text-white rounded-md '>Remove friend</button>
+                                </div>
+
+
+                                <div className="space-y-6">
+                                    <div className="space-y-1.5">
+                                        <div className="text-sm text-zinc-400 flex items-center gap-2">
+                                            <User className="w-4 h-4" />
+                                            {selectedUser?.fullName ? "Full Name" : "Group Name"}
+                                        </div>
+                                        <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{selectedUser?.fullName ? selectedUser.fullName : selectedUser?.name}</p>
+                                    </div>
+
+                                    {selectedUser?.fullName ? <div className="space-y-1.5">
+                                        <div className="text-sm text-zinc-400 flex items-center gap-2">
+                                            <Mail className="w-4 h-4" />
+                                            Email Address
+                                        </div>
+                                        <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{selectedUser?.email}</p>
+                                    </div> :
+
+
+                                        <div className="space-y-1.5">
+                                            <div className="text-sm text-zinc-400 flex items-center gap-2">
+                                                Description
+                                            </div>
+                                            <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{selectedUser?.description}</p>
+                                        </div>
+
+                                    }
+
                                 </div>
                             </div>
-                            <button className='bg-red-700 btn   font-bold text-white rounded-md '>Remove friend</button>
-                        </div>
-
-
-                        <div className="space-y-6">
-                            <div className="space-y-1.5">
-                                <div className="text-sm text-zinc-400 flex items-center gap-2">
-                                    <User className="w-4 h-4" />
-                                    Full Name
+                            <div className='flex justify-center gap-3 items-center flex-col'>
+                                <div className="text-sm text-zinc-400 flex   items-center gap-2">
+                                    <Users className="w-4 h-4" />
+                                    Members
                                 </div>
-                                <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{selectedUser?.fullName}</p>
-                            </div>
+                                <div className='h-[50%]   flex flex-wrap'>
 
-                            <div className="space-y-1.5">
-                                <div className="text-sm text-zinc-400 flex items-center gap-2">
-                                    <Mail className="w-4 h-4" />
-                                    Email Address
+                                    {selectedUser?.membersInfo?.map(item => (
+                                        <div >
+                                            <button
+                                                key={item._id}
+                                                className={`
+              w-full p-3 flex items-center gap-3
+              hover:bg-base-300 transition-colors
+            `}
+                                            >
+                                                <div className="relative mx-auto lg:mx-0">
+                                                    <img loading="blur"
+                                                        src={item.fullName !== undefined ? item.profilePic || "/group.png" : item.profilePic || "/avatar.png"}
+                                                        alt={item.fullName}
+                                                        className="size-12 object-cover rounded-full brightness-95"
+                                                    />
+                                                    <h1>{item.fullName}</h1>
+                                                </div >
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
-                                <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{selectedUser?.email}</p>
-                            </div>
+                            </ div>
                         </div>
 
                         <div className='flex flex-col gap-3 '>
-                             <h1 className="text-sm text-zinc-400 flex items-center gap-2"><HistoryIcon className='w-4 h-4'/> History</h1>
+                            <h1 className="text-sm text-zinc-400 flex items-center gap-2"><HistoryIcon className='w-4 h-4' /> History</h1>
 
                             {History && (
                                 <ol tabIndex={0} onBlur={() => setHistory(false)} className="bg-base-300 border border-white  rounded-md w-[25rem] h-[20rem] overflow-y-scroll  p-4 flex flex-col gap-3     shadow-md shadow-black ">
@@ -170,7 +216,7 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
 
                                                     <h2 className='flex gap-2'>
                                                         <img className='w-8 inline rounded-full' src={data?.senderInfo.profilePic} alt="" />
-                                                            {data?.senderInfo.fullName}
+                                                        {data?.senderInfo.fullName}
                                                     </h2>
                                                 </div>
                                                 <h2 className='truncate text-sm'> <span className='font-bold'>Date: </span>{data?.createdAt.slice(0, 10)}</h2>
