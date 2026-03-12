@@ -6,18 +6,18 @@ const app = express();
 const server = http.createServer(app);
 app.use(
   cors({
-    // origin: process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN,
     // origin: "https://rapid-chat-five.vercel.app",
     methods: ['GET', 'POST','PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
-    origin: process.env.development?"http://localhost:5173" : "https://rapid-chat-five.vercel.app" , 
+    // origin: process.env.development?"http://localhost:5173" : "https://rapid-chat-five.vercel.app" , 
   })
 );
 const io = new Server(server, {
   cors: {
-    // origin: [process.env.CORS_ORIGIN],
+    origin: [process.env.CORS_ORIGIN],
     // origin: ["https://rapid-chat-five.vercel.app"],
-    origin: [process.env.development?"http://localhost:5173" : "https://rapid-chat-five.vercel.app"],
+    // origin: [process.env.development?"http://localhost:5173" : "https://rapid-chat-five.vercel.app"],
   },
 });
 
