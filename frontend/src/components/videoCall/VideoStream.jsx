@@ -4,8 +4,9 @@ import { useChatStore } from '../../store/useChatStore';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useImperativeHandle } from 'react';
+import { axiosInstance } from '../../lib/axios';
 import { forwardRef } from 'react';
-const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
+const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const videoContainerRef = useRef(null);
@@ -15,15 +16,17 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
   const peerRef = useRef(null);
   const localStreamRef = useRef(null);
   const currentCallRef = useRef(null);
-  const {selectedUser} = useChatStore()
-  const { peer, peerId, getPeerId,onlineUsers, friendPeerId, removePeerId } = useAuthStore()
+  const { selectedUser } = useChatStore()
+  const { peer, peerId, getPeerId, onlineUsers, friendPeerId, removePeerId } = useAuthStore()
   const [localId, setLocalId] = useState('');
   const [remoteId, setRemoteId] = useState('');
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // New state for incoming call and notification  
+  const [captions, setCaptions] = useState("");
+  const mediaRecorderRef = useRef(null);
+  // New state for incoming call and notification 
+  const audioChunksRef = useRef([]);
   const [notification, setNotification] = useState('');
 
   useEffect(() => {
@@ -33,60 +36,135 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
           video: { width: 640, height: 480 },
           audio: true
         });
+
+        // set local video
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStream;
         }
+
         localStreamRef.current = localStream;
 
-        peerRef.current = peer;
-        setLocalId(peerId)
 
+        const audioStream = new MediaStream(
+          localStream.getAudioTracks()
+        );
+
+        let options = {};
+
+        if (MediaRecorder.isTypeSupported("audio/webm")) {
+          options.mimeType = "audio/webm";
+        }
+
+        const mediaRecorder = new MediaRecorder(audioStream, options);
+
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (event) => {
+          console.log("DATA EVENT", event.data.size);
+
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+        // send audio every 3 sec
+        mediaRecorder.start(3000);
+
+        console.log("Recorder state:", mediaRecorder.state);
+        peerRef.current = peer;
+        setLocalId(peerId);
         setIsInitialized(true);
 
-        // peer.on('open', (id) => {
-        //   setLocalId(id);
-        //   console.log("insider")
-        // });
-
-        // peer.on('call', handleIncomingCall);
+        // handle rejection messages
         peer.on('connection', (conn) => {
           conn.on('data', (data) => {
             if (data === 'rejected') {
               if (audioRef.current) {
-                audioRef.current.pause();          // ⏸ Pause music
-                audioRef.current.currentTime = 0;  // ⏮ Reset to start
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
               }
-                if (audioRef2.current) {
+
+              if (audioRef2.current) {
                 audioRef2.current.muted = false;
                 audioRef2.current.currentTime = 0;
-                audioRef2.current.play().catch(() => {});
+                audioRef2.current.play().catch(() => { });
                 setTimeout(() => {
                   if (audioRef2.current) {
-                  audioRef2.current.pause();
-                  audioRef2.current.currentTime = 0;
+                    audioRef2.current.pause();
+                    audioRef2.current.currentTime = 0;
                   }
                 }, 2000);
-                }
-              removePeerId()
+              }
+
+              removePeerId();
               setNotification('Call was rejected');
               setConnecting(false);
-              setCallActive(false)
+              setCallActive(false);
             }
           });
         });
 
-
       } catch (error) {
         handleError('Failed to access camera/microphone', error);
+        console.log(error)
       }
     };
-    initializePeer();
-    return () => {  
-        localStreamRef?.current?.getTracks().forEach(track => track.stop());
-       
-    }
-  }, []);
 
+    initializePeer();
+
+    return () => {
+      // cleanup media stream
+      localStreamRef?.current?.getTracks().forEach(track => track.stop());
+
+      // stop recorder
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+  const sendAudio = async () => {
+    console.log("sending audio", audioChunksRef)
+    if (!audioChunksRef.current.length) return;
+    console.log("sending audio2")
+    const blob = new Blob(audioChunksRef.current, {
+      type: "audio/webm"
+    });
+    // audioChunksRef.current = []; // clear after sending
+
+    const file = new File([blob], "audio.webm", {
+      type: "audio/webm"
+    });
+
+    const formData = new FormData();
+
+    // key must match backend
+    formData.append("audio", file);
+
+
+
+    try {
+      const res = await axiosInstance.post(
+        "/video-call/transcribe",
+        formData
+      );
+
+      if (!res.ok) {
+        console.error("Server error:", await res.text );
+        return;
+      }
+
+      const data = await res.json();
+      console.log("wtf", res)
+      if (data.text) {
+        setCaptions((prev) => {
+          const updated = (prev + " " + data.text).trim();
+          return updated.split(" ").slice(-50).join(" "); // limit memory
+        });
+      }
+    } catch (err) {
+      console.error("FULL ERROR:", err);
+      console.error("SERVER RESPONSE:", err.response?.data);
+    }
+  };
   // Show notification for 2 seconds
   useEffect(() => {
     if (notification) {
@@ -130,13 +208,13 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
     call.on('stream', (remoteStream) => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream;
-          if (audioRef.current) {
-                audioRef.current.pause();          // ⏸ Pause music
-                audioRef.current.currentTime = 0;  // ⏮ Reset to start
-              }if (audioRef2.current) {
-                audioRef2.current.pause();          // ⏸ Pause music
-                audioRef2.current.currentTime = 0;  // ⏮ Reset to start
-              }
+        if (audioRef.current) {
+          audioRef.current.pause();          // ⏸ Pause music
+          audioRef.current.currentTime = 0;  // ⏮ Reset to start
+        } if (audioRef2.current) {
+          audioRef2.current.pause();          // ⏸ Pause music
+          audioRef2.current.currentTime = 0;  // ⏮ Reset to start
+        }
       }
       setCalling(false)
       setCallActive(true);
@@ -156,7 +234,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
 
   }, [friendPeerId])
   useEffect(() => {
-    const call = () => { 
+    const call = () => {
       try {
         setConnecting(true);
 
@@ -167,18 +245,18 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
         const conn = peerRef.current.connect(remoteId);
         conn.on('data', (data) => {
           if (data === 'rejected') {
-             if (audioRef.current) {
-                audioRef.current.pause();          // ⏸ Pause music
-                audioRef.current.currentTime = 0;  // ⏮ Reset to start
-              }if (audioRef2.current) {
-                audioRef2.current.pause();          // ⏸ Pause music
-                audioRef2.current.currentTime = 0;  // ⏮ Reset to start
-              }
+            if (audioRef.current) {
+              audioRef.current.pause();          // ⏸ Pause music
+              audioRef.current.currentTime = 0;  // ⏮ Reset to start
+            } if (audioRef2.current) {
+              audioRef2.current.pause();          // ⏸ Pause music
+              audioRef2.current.currentTime = 0;  // ⏮ Reset to start
+            }
             setNotification('Call was rejected');
             call.close(); // Close media call
             setConnecting(false);
             setCallActive(false);
-           
+
           }
         });
 
@@ -225,6 +303,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
     setCallActive(false);
     setConnecting(false);
     setNotification('Call ended');
+    // audioChunksRef.current = []; // clear after sending
   };
 
 
@@ -246,15 +325,15 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
     alert(message);
   };
 
- 
 
-  const getCallStatus = () => { 
+
+  const getCallStatus = () => {
     if (!onlineUsers.includes(selectedUser._id)) return 'User is offline';
     if (!isInitialized) return 'Initializing...';
     if (connecting) return 'Connecting...';
-    if(Calling) return "Calling..."
+    if (Calling) return "Calling..."
     if (callActive) return 'Connected';
-    
+
     return 'Ready to connect';
   };
 
@@ -311,7 +390,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
                 playsInline
                 className="w-full h-full lg:h-full bg-gray-900 rounded-lg object-cover"
               />
-              {(!callActive  ) && (
+              {(!callActive) && (
                 <div className="absolute inset-0 flex items-center justify-center  h-[200%] mt-[-4.8rem] bg-gray-800 bg-opacity-80 rounded-lg">
                   <div className="text-center  text-white">
                     <BotMessageSquare className="w-12 h-12 mx-auto mb-4 opacity-60" />
@@ -333,7 +412,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
 
           {/* Action Buttons */}
           <div className="flex m-auto w-fit flex-wrap gap-3 mt-6">
-           {!callActive && <button
+            {!callActive && <button
               onClick={startCall}
               disabled={!isInitialized || callActive || connecting || !onlineUsers.includes(selectedUser._id)}
               className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -343,7 +422,7 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
             </button>}
 
             {callActive && <button
-              onClick={endCall} 
+              onClick={endCall}
 
               className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
@@ -358,8 +437,21 @@ const VideoStream = forwardRef(({   setIncomingCall, incomingCall }, ref) => {
               <Maximize className="w-4 h-4" />
               Fullscreen
             </button>
+
+            <button
+              onClick={sendAudio}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Send Audio
+            </button>
+            {captions && (
+              <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 
+    bg-black bg-opacity-70 text-white px-4 py-2 rounded max-w-xl text-center">
+                {captions}
+              </div>
+            )}
           </div>
-        </div> 
+        </div>
       </div>
     </div>
   );

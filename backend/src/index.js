@@ -25,6 +25,8 @@ import authRoutes from "./routes/auth.route.js";
 import messageRoutes from "./routes/message.route.js";
 import streamRoutes from "./routes/stream.route.js"
 import groupRoutes from "./routes/groupMessage.route.js";
+
+import videoCall from "./routes/videoCall.route.js"
 import { app, server } from "./lib/socket.js";
 import multer from "multer"; 
 
@@ -47,6 +49,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/stream", streamRoutes)
+app.use("/api/video-call", videoCall)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
