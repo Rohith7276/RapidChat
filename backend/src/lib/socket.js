@@ -6,28 +6,28 @@ const app = express();
 const server = http.createServer(app);
 app.use(
   cors({
-    // origin: process.env.CORS_ORIGIN,
-    origin: "https://rapid-chat-five.vercel.app",
-    methods: ['GET', 'POST','PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: process.env.CORS_ORIGIN,
+    // origin: "https://rapid-chat-five.vercel.app",
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
     // origin: process.env.development?"http://localhost:5173" : "https://rapid-chat-five.vercel.app" , 
   })
 );
 const io = new Server(server, {
   cors: {
-    // origin: [process.env.CORS_ORIGIN],
-    origin: ["https://rapid-chat-five.vercel.app"],
+    origin: [process.env.CORS_ORIGIN],
+    // origin: ["https://rapid-chat-five.vercel.app"],
     // origin: [process.env.development?"http://localhost:5173" : "https://rapid-chat-five.vercel.app"],
   },
 });
+const rooms = {}; // add this at top
 
 const userSocketMap = {}; // {userId: socketId}
-const emailToSocketMapping = new Map()
-const socketToEmailMapping = new Map()
+
 export function getReceiverSocketId(userId) {
   return userSocketMap[userId];
 }
- 
+
 
 const connectedUsers = new Map();
 const activeRooms = new Map();
@@ -38,15 +38,26 @@ const getUserInfo = (socketId) => {
 };
 
 // Helper function to broadcast to room
- 
+
 
 
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id); 
+  console.log("A user connected", socket.id);
   const userId = socket.handshake.query.userId;
   if (userId) userSocketMap[userId] = socket.id;
 
+
+  socket.on("call-user", ({ targetUserId, roomId }) => {
+  const receiverSocket = userSocketMap[targetUserId];
+
+  if (receiverSocket) {
+    io.to(receiverSocket).emit("incoming-call", {
+      roomId,
+      from: socket.id
+    });
+  }
+});
 
   connectedUsers.set(socket.id, {
     id: socket.id,
@@ -55,28 +66,27 @@ io.on("connection", (socket) => {
     currentRoom: null
   });
 
-  socket.on("join-room", (data)=>{
-    const {emailId, roomId } = data; 
-    socketToEmailMapping.set(socket.id, emailId)
-    emailToSocketMapping.set(emailId, socket.id)
-    socket.join(roomId)
-    socket.emit("joined-room", {roomId})
-    
-    socket.broadcast.to(roomId).emit("user-joined", {emailId})
-  })
-  socket.on("call-user", data =>{
-    const { emailId, offer } = data
-    const fromEmail = socketToEmailMapping.get(socket.id)
-    const socketId = emailToSocketMapping.get(emailId)
-    socket.to(socketId).emit('incomming-call', {from: fromEmail, offer})
+  socket.on("join-room", ({ roomId, emailId }) => {
 
-  })
+    socket.join(roomId);
+    socket.roomId = roomId;
 
-  socket.on('call-accepted', data =>{
-    const {emailId, ans} = data;
-    const socketId = socketToEmailMapping.get(emailId)
-    socket.to(socketId).emit('call-accepted', {ans})
-  })
+    if (!rooms[roomId]) rooms[roomId] = [];
+    rooms[roomId].push(socket.id);
+
+    // 🔥 IMPORTANT: send existing users to new user
+    const otherUsers = rooms[roomId].filter(id => id !== socket.id);
+    socket.emit("all-users", otherUsers);
+
+    // notify others
+    socket.to(roomId).emit("user-joined", {
+      caller: socket.id,
+      emailId
+    });
+  });
+
+
+
 
   // Send user their socket ID
   socket.emit('user-connected', {
@@ -84,46 +94,26 @@ io.on("connection", (socket) => {
     message: 'Connected successfully'
   });
 
- 
+
 
   // Handle WebRTC offer
-  socket.on('offer', (data) => {
-    const { offer, to } = data;
- 
-
-    io.to(to).emit('offer', {
-      offer: offer,
-      from: socket.id
-    });
+  socket.on("offer", ({ target, sdp }) => {
+    io.to(target).emit("offer", { sdp, caller: socket.id });
   });
 
-  // Handle WebRTC answer
-  socket.on('answer', (data) => {
-    const { answer, to } = data;
- 
-
-    io.to(to).emit('answer', {
-      answer: answer,
-      from: socket.id
-    });
+  socket.on("answer", ({ target, sdp }) => {
+    io.to(target).emit("answer", { sdp, caller: socket.id });
   });
 
-  // Handle ICE candidates
-  socket.on('ice-candidate', (data) => {
-    const { candidate, to } = data;
- 
-
-    io.to(to).emit('ice-candidate', {
-      candidate: candidate,
-      from: socket.id
-    });
+  socket.on("ice-candidate", ({ target, candidate }) => {
+    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
   });
 
   // Handle screen share request
   socket.on('screen-share-request', (data) => {
     const { to } = data;
     const userInfo = getUserInfo(socket.id);
- 
+
 
     // Update user status
     connectedUsers.set(socket.id, {
@@ -142,7 +132,7 @@ io.on("connection", (socket) => {
   socket.on('screen-share-response', (data) => {
     const { accepted, to } = data;
     const userInfo = getUserInfo(socket.id);
- 
+
 
     io.to(to).emit('screen-share-response', {
       accepted: accepted,
@@ -156,7 +146,7 @@ io.on("connection", (socket) => {
   socket.on('screen-share-ended', (data) => {
     const { to } = data;
     const userInfo = getUserInfo(socket.id);
- 
+
 
     // Update user status
     connectedUsers.set(socket.id, {
@@ -228,42 +218,35 @@ io.on("connection", (socket) => {
   });
 
   // Handle disconnect
-  socket.on('disconnect', (reason) => { 
+  socket.on("disconnect", () => {
+  console.log("A user disconnected", socket.id);
 
-    const userInfo = getUserInfo(socket.id);
+  const roomId = socket.roomId;
 
-    // Remove from room if exists
-    if (userInfo && userInfo.currentRoom) {
-      const room = activeRooms.get(userInfo.currentRoom);
-      if (room) {
-        room.participants = room.participants.filter(id => id !== socket.id);
+  // 🔹 Remove from room (WebRTC mesh cleanup)
+  if (roomId && rooms[roomId]) {
+    rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
 
-        // Notify others in room
-        socket.to(userInfo.currentRoom).emit('user-left', {
-          userId: socket.id,
-          userName: userInfo.userName,
-          participants: room.participants.length
-        });
+    // notify others
+    socket.to(roomId).emit("user-left", socket.id);
 
-        // If screen was being shared, notify about end
-        if (userInfo.isSharing) {
-          socket.to(userInfo.currentRoom).emit('screen-share-ended', {
-            from: socket.id,
-            fromUser: userInfo.userName,
-            reason: 'user-disconnected'
-          });
-        }
-
-        // Clean up empty room
-        if (room.participants.length === 0) {
-          activeRooms.delete(userInfo.currentRoom); 
-        }
-      }
+    // optional: delete empty room
+    if (rooms[roomId].length === 0) {
+      delete rooms[roomId];
     }
+  }
 
-    // Remove from connected users
-    connectedUsers.delete(socket.id);
-  });
+  // 🔹 Remove from userSocketMap
+  if (userId) {
+    delete userSocketMap[userId];
+  }
+
+  // 🔹 Remove from connectedUsers
+  connectedUsers.delete(socket.id);
+
+  // 🔹 Broadcast updated online users
+  io.emit("getOnlineUsers", Object.keys(userSocketMap));
+});
 
   // Error handling
   socket.on('error', (error) => {
@@ -286,32 +269,11 @@ io.on("connection", (socket) => {
   });
   socket.on("joinGroup", ({ groupId, userId }) => {
     socket.join(groupId);
-    userSocketMap[userId] = socket.id; 
+    userSocketMap[userId] = socket.id;
   });
 
-  socket.on('get-peer-id', (userId, name, group) => { 
 
-    if (!group) {
-      const requesterSocketId = socket.id;
-      const receiverSocketId = getReceiverSocketId(userId); 
-      // Ask the receiver for their peer ID, and pass along who’s asking
-      io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, name);
-    }
-    else {
-      console.log(userId)
-      const requesterSocketId = socket.id
-      userId.members.forEach(element => {
-        if (element != name._id) {
-          const receiverSocketId = getReceiverSocketId(element)
-          io.to(receiverSocketId).emit('get-local-peer-id', requesterSocketId, userId);
-        }
-      });
-    }
-  });
 
-  socket.on('send-peer-id', (peerId, requesterSocketId) => { 
-    io.to(requesterSocketId).emit('take-peer-id', peerId)
-  })
 
 
 
@@ -323,11 +285,7 @@ io.on("connection", (socket) => {
   // Keep a temp map
   const pendingPeerIdRequests = {};
 
-  socket.on("disconnect", () => {
-    console.log("A user disconnected", socket.id);
-    delete userSocketMap[userId];
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  });
+  
 });
 
 

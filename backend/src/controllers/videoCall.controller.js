@@ -24,7 +24,7 @@ export const transcribe = async (req, res) => {
       temperature: 0.0,
     });
 
-    // fs.unlinkSync(filePath);
+    fs.unlinkSync(filePath);
 
     const text = response?.text; 
     console.log(text)

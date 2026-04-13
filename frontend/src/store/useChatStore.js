@@ -16,7 +16,7 @@ export const useChatStore = create((set, get) => ({
   sidebarRefresh: true,
   isUserMessageLoading: false,
   newMessageFromUser: false,
-
+  videoCall: false,
 
   setNewMsg: (boolval) => set({ newMessageFromUser: boolval }),
   setVideoCall: (boolval) => set({ videoCall: boolval }),

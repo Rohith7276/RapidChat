@@ -24,7 +24,7 @@ const chatContainer = () => {
     videoCall,
     setVideoCall
   } = useChatStore();
-  const { peer, peerId, callerName, getPeerId, friendPeerId } = useAuthStore()
+  const { peer, peerId, callerName,socket, getPeerId, friendPeerId } = useAuthStore()
 
   const {
     streamSet,
@@ -104,12 +104,12 @@ const chatContainer = () => {
 
   //Infinite scroll
   useEffect(() => {
-    peer.on('call', (call) => {
+    socket.on("incoming-call", (data) => {
       setVideoCall(true)
 
-      setIncomingCall(call)
+      setIncomingCall(data)
     });
-
+    return () => socket.off("incoming-call");
   }, [])
 
 
@@ -277,7 +277,7 @@ const chatContainer = () => {
       <div className="w-full z-[10]  flex justify-end">
         <button onClick={scrollToBottom} className={`${MoveDown ? "block" : "hidden"}  bg-base-300 h-fit p-2 rounded-md w-fit mt-[-3rem] mr-8`}><ChevronDown /></button>
       </div>
-      {videoCall && <VideoStream ref={childRef} setIncomingCall={setIncomingCall} incomingCall={incomingCall} />}
+      {videoCall && <VideoStream setIncomingCall={setIncomingCall} incomingCall={incomingCall} />}
       {/* Incoming Call Modal */}
       {incomingCall && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -287,9 +287,12 @@ const chatContainer = () => {
             <div className="flex justify-center gap-4">
               <button
                 onClick={() => {
-                  if (childRef.current) {
-                    childRef.current.acceptCall(); // Call child's function
-                  }
+                  socket.emit("join-room", {
+                    roomId: incomingCall.roomId,
+                    userName: "User"
+                  });
+
+                  setIncomingCall(null);
                 }}
                 className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
               >
@@ -297,9 +300,8 @@ const chatContainer = () => {
               </button>
               <button
                 onClick={() => {
-                  if (childRef.current) {
-                    childRef.current.rejectCall(); // Call child's function
-                  }
+                  setIncomingCall(null);
+
                 }}
                 className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
               >
