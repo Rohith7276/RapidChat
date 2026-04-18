@@ -21,6 +21,7 @@ const io = new Server(server, {
   },
 });
 const rooms = {}; // add this at top
+const roomUserInfo = {}; // {roomId: {socketId: {displayName, userId}}}
 
 const userSocketMap = {}; // {userId: socketId}
 
@@ -59,6 +60,22 @@ io.on("connection", (socket) => {
   }
 });
 
+  socket.on("call-group", ({ targetUserIds = [], roomId, groupId, callerName }) => {
+    if (!Array.isArray(targetUserIds) || !roomId) return;
+
+    targetUserIds.forEach((targetUserId) => {
+      const receiverSocket = userSocketMap[targetUserId];
+      if (!receiverSocket || receiverSocket === socket.id) return;
+
+      io.to(receiverSocket).emit("incoming-call", {
+        roomId,
+        groupId: groupId || null,
+        from: socket.id,
+        callerName: callerName || null,
+      });
+    });
+  });
+
   connectedUsers.set(socket.id, {
     id: socket.id,
     connectedAt: new Date(),
@@ -72,17 +89,53 @@ io.on("connection", (socket) => {
     socket.roomId = roomId;
 
     if (!rooms[roomId]) rooms[roomId] = [];
-    rooms[roomId].push(socket.id);
+    if (!rooms[roomId].includes(socket.id)) {
+      rooms[roomId].push(socket.id);
+    }
 
-    // 🔥 IMPORTANT: send existing users to new user
-    const otherUsers = rooms[roomId].filter(id => id !== socket.id);
+    // Store user info with display name
+    if (!roomUserInfo[roomId]) roomUserInfo[roomId] = {};
+    roomUserInfo[roomId][socket.id] = { displayName: emailId, userId: socket.id };
+
+    // 🔥 IMPORTANT: send existing users to new user WITH their names
+    const otherUsers = rooms[roomId]
+      .filter(id => id !== socket.id)
+      .map(id => ({
+        socketId: id,
+        displayName: roomUserInfo[roomId][id]?.displayName || 'User'
+      }));
     socket.emit("all-users", otherUsers);
 
     // notify others
     socket.to(roomId).emit("user-joined", {
       caller: socket.id,
-      emailId
+      displayName: emailId
     });
+  });
+
+  socket.on("leave-room", ({ roomId }) => {
+    const activeRoomId = roomId || socket.roomId;
+    if (!activeRoomId || !rooms[activeRoomId]) return;
+
+    rooms[activeRoomId] = rooms[activeRoomId].filter((id) => id !== socket.id);
+    socket.leave(activeRoomId);
+    socket.to(activeRoomId).emit("user-left", socket.id);
+
+    // Clean up user info
+    if (roomUserInfo[activeRoomId]) {
+      delete roomUserInfo[activeRoomId][socket.id];
+      if (Object.keys(roomUserInfo[activeRoomId]).length === 0) {
+        delete roomUserInfo[activeRoomId];
+      }
+    }
+
+    if (rooms[activeRoomId].length === 0) {
+      delete rooms[activeRoomId];
+    }
+
+    if (socket.roomId === activeRoomId) {
+      socket.roomId = null;
+    }
   });
 
 
@@ -107,6 +160,11 @@ io.on("connection", (socket) => {
 
   socket.on("ice-candidate", ({ target, candidate }) => {
     io.to(target).emit("ice-candidate", { candidate, from: socket.id });
+  });
+
+  socket.on("end-call", ({ target }) => {
+    if (!target) return;
+    io.to(target).emit("call-ended", { from: socket.id });
   });
 
   // Handle screen share request

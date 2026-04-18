@@ -1,7 +1,7 @@
 
 import { BotMessageSquare, Copy, Phone, PhoneOff, Maximize } from 'lucide-react';
 import { useChatStore } from '../../store/useChatStore';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useImperativeHandle } from 'react';
 import { axiosInstance } from '../../lib/axios';
@@ -17,10 +17,10 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
   const localStreamRef = useRef(null);
   const currentCallRef = useRef(null);
   const peersRef = useRef({});
+  const peerNamesRef = useRef({});
   const [peers, setPeers] = useState([]);
   const { selectedUser } = useChatStore()
-  const { peerId, onlineUsers, socket, removePeerId } = useAuthStore()
-  const [localId, setLocalId] = useState('');
+  const { authUser, onlineUsers, socket } = useAuthStore()
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -29,8 +29,76 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
   // New state for incoming call and notification 
   const audioChunksRef = useRef([]);
   const [notification, setNotification] = useState('');
+  const currentRoomIdRef = useRef(null);
 
-  const addPeer = async (caller, stream) => {
+  const isGroupChat = Boolean(selectedUser?.name && !selectedUser?.fullName);
+
+  const markConnected = useCallback(() => {
+    setConnecting(false);
+    setCalling(false);
+    setCallActive(true);
+  }, []);
+
+  const getPeerDisplayName = useCallback((peerId, fallback = null) => {
+    if (fallback) return fallback;
+    if (peerNamesRef.current[peerId]) return peerNamesRef.current[peerId];
+    return `User ${peerId?.slice?.(0, 6) || ''}`;
+  }, []);
+
+  const upsertPeerStream = useCallback((peerId, stream, displayName = null) => {
+    if (displayName) {
+      peerNamesRef.current[peerId] = displayName;
+    }
+    console.log("hm", displayName)
+
+    setPeers((prev) => {
+      const existingIndex = prev.findIndex((p) => p.peerId === peerId);
+      const resolvedName = getPeerDisplayName(peerId, displayName);
+
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          stream,
+          displayName: resolvedName,
+        };
+        return updated;
+      }
+
+      return [...prev, { peerId, stream, displayName: resolvedName }];
+    });
+  }, [getPeerDisplayName]);
+
+  const getMediaErrorMessage = useCallback((error) => {
+    if (!error) return 'Unable to access camera/microphone';
+
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      return 'Camera/Microphone permission denied. Please allow access in browser site settings.';
+    }
+    if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      return 'No camera or microphone found on this device.';
+    }
+    if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      return 'Camera or microphone is already in use by another app.';
+    }
+    if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+      return 'Requested camera settings are not supported on this device.';
+    }
+    if (error.name === 'SecurityError') {
+      return 'Browser blocked media devices due to security restrictions.';
+    }
+
+    return 'Unable to access camera/microphone. Please check permissions and device availability.';
+  }, []);
+
+  const addPeer = async (caller, stream, displayName = null) => {
+    console.log("dekkk", displayName)
+    
+    // Store display name for later retrieval
+    if (displayName) {
+      peerNamesRef.current[caller] = displayName;
+    }
+    
     const peer = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
     });
@@ -39,10 +107,8 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
     });
 
     peer.ontrack = (event) => {
-      setPeers(prev => {
-        if (prev.find(p => p.peerId === caller)) return prev;
-        return [...prev, { peerId: caller, stream: event.streams[0] }];
-      });
+      markConnected();
+      upsertPeerStream(caller, event.streams[0], displayName);
     };
 
     peer.onicecandidate = (event) => {
@@ -60,10 +126,26 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
   useEffect(() => {
     const initializePeer = async () => {
       try {
-        const localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480 },
-          audio: true
-        });
+        if (!navigator.mediaDevices?.getUserMedia) {
+          handleError('Media devices are not supported in this browser.');
+          return;
+        }
+
+        let localStream;
+
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480 },
+            audio: true
+          });
+        } catch (cameraError) {
+          // Fallback to audio-only so calling still works when camera access fails.
+          localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: false,
+          });
+          setNotification('Camera unavailable. Joined call with audio only.');
+        }
 
         // set local video
         if (localVideoRef.current) {
@@ -73,41 +155,38 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
         localStreamRef.current = localStream;
 
 
-        const audioStream = new MediaStream(
-          localStream.getAudioTracks()
-        );
+        if (localStream.getAudioTracks().length > 0) {
+          const audioStream = new MediaStream(
+            localStream.getAudioTracks()
+          );
 
-        let options = {};
+          let options = {};
 
-        if (MediaRecorder.isTypeSupported("audio/webm")) {
-          options.mimeType = "audio/webm";
+          if (MediaRecorder.isTypeSupported("audio/webm")) {
+            options.mimeType = "audio/webm";
+          }
+
+          const mediaRecorder = new MediaRecorder(audioStream, options);
+          mediaRecorderRef.current = mediaRecorder;
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              audioChunksRef.current.push(event.data);
+            }
+          };
+
+          // send audio every 3 sec
+          mediaRecorder.start(3000);
         }
 
-        const mediaRecorder = new MediaRecorder(audioStream, options);
-
-        mediaRecorderRef.current = mediaRecorder;
-
-        mediaRecorder.ondataavailable = (event) => {
-          console.log("DATA EVENT", event.data.size);
-
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-        // send audio every 3 sec
-        mediaRecorder.start(3000);
-
-        console.log("Recorder state:", mediaRecorder.state);
-
-        setLocalId(peerId);
         setIsInitialized(true);
 
         // handle rejection messages
 
 
       } catch (error) {
-        handleError('Failed to access camera/microphone', error);
-        console.log(error)
+        console.error('getUserMedia failed:', error);
+        handleError(getMediaErrorMessage(error));
       }
     };
 
@@ -122,27 +201,56 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
         mediaRecorderRef.current.stop();
       }
     };
-  }, []);
+  }, [getMediaErrorMessage]);
 
 
   useEffect(() => {
 
 
-    socket.on("all-users", (users) => {
-      users.forEach(userId => {
-        createPeer(userId, socket.id, localStreamRef.current);
+    const handleAllUsers = (users) => {
+      users.forEach(user => {
+        const userId = typeof user === 'string' ? user : user.socketId;
+        const displayName = typeof user === 'string' ? null : user.displayName;
+        if (userId === socket.id) return;
+        if (peersRef.current[userId]) return;
+        createPeer(userId, socket.id, localStreamRef.current, displayName);
       });
-    });
+    };
 
-    socket.on("user-joined", ({ caller }) => {
-      addPeer(caller, localStreamRef.current);
-    });
+    const handleUserJoined = ({ caller, displayName }) => {
+      if (caller === socket.id) return;
+      
+      // If peer already exists (caller created it), update the display name
+      if (peersRef.current[caller]) {
+        peerNamesRef.current[caller] = displayName;
+        setPeers(prev => {
+          return prev.map(p => p.peerId === caller ? { ...p, displayName } : p);
+        });
+        return;
+      }
+      
+      // Otherwise, create new peer (receiver joining group call)
+      addPeer(caller, localStreamRef.current, displayName);
+    };
 
-  }, []);
+    socket.on("all-users", handleAllUsers);
+    socket.on("user-joined", handleUserJoined);
+
+    return () => {
+      socket.off("all-users", handleAllUsers);
+      socket.off("user-joined", handleUserJoined);
+    };
+
+  }, [socket, upsertPeerStream]);
 
 
 
-  const createPeer = (userToSignal, callerId, stream) => {
+  const createPeer = (userToSignal, callerId, stream, displayName = null) => {
+    // Store display name for later retrieval
+    if (displayName) {
+      peerNamesRef.current[userToSignal] = displayName;
+    }
+    
     const peer = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" }
@@ -164,11 +272,9 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
     };
 
     peer.ontrack = (event) => {
-      setPeers(prev => {
-        if (prev.find(p => p.peerId === userToSignal)) return prev;
-        return [...prev, { peerId: userToSignal, stream: event.streams[0] }];
-      });
-    };
+      markConnected();
+      upsertPeerStream(userToSignal, event.streams[0], displayName);
+    };  
 
     peer.createOffer().then(offer => {
       peer.setLocalDescription(offer);
@@ -193,10 +299,9 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
       });
 
       peer.ontrack = (event) => {
-        setPeers(prev => {
-          if (prev.find(p => p.peerId === caller)) return prev;
-          return [...prev, { peerId: caller, stream: event.streams[0] }];
-        });
+        markConnected();
+        const savedName = peerNamesRef.current[caller];
+        upsertPeerStream(caller, event.streams[0], savedName);
       };
 
       peer.onicecandidate = (event) => {
@@ -223,6 +328,7 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
     const handleAnswer = ({ sdp, caller }) => {
       const peer = peersRef.current[caller];
       peer.setRemoteDescription(new RTCSessionDescription(sdp));
+      setConnecting(false);
     }
     const handleIce = ({ from, candidate }) => {
       const peer = peersRef.current[from];
@@ -241,7 +347,7 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
       socket.off("ice-candidate", handleIce);
     };
 
-  }, []);
+  }, [markConnected, upsertPeerStream]);
 
 
   const sendAudio = async () => {
@@ -293,8 +399,20 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
         peer.close();
         delete peersRef.current[id];
       }
+      delete peerNamesRef.current[id];
 
-      setPeers(prev => prev.filter(p => p.peerId !== id));
+      setPeers(prev => {
+        const filtered = prev.filter(p => p.peerId !== id);
+        if (filtered.length === 0 && currentRoomIdRef.current) {
+          setCallActive(false);
+          setConnecting(false);
+          setCalling(false);
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = null;
+          }
+        }
+        return filtered;
+      });
     });
 
     return () => socket.off("user-left");
@@ -374,36 +492,97 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
     setConnecting(true); // 🔥 ADD THIS
 
     const roomId = Math.random().toString(36).substring(2, 8);
-
+    currentRoomIdRef.current = roomId;
+    // console.log("see this", authUser.fullName)
     socket.emit("join-room", {
       roomId,
-      userName: "Rohith"
+      emailId:  authUser?.fullName||authUser?.email  || 'User'
     });
 
-    socket.emit("call-user", {
-      targetUserId: selectedUser._id,
-      roomId
-    });
+    if (isGroupChat) {
+      const memberIds = Array.isArray(selectedUser?.members)
+        ? selectedUser.members
+        : Array.isArray(selectedUser?.users)
+          ? selectedUser.users
+          : Array.isArray(selectedUser?.memberIds)
+            ? selectedUser.memberIds
+            : [];
+      const targetUserIds = memberIds
+        .map((member) => (typeof member === 'string' ? member : member?._id))
+        .filter((id) => id && id !== authUser?._id);
+
+      if (targetUserIds.length === 0) {
+        setConnecting(false);
+        setCalling(false);
+        setNotification('No group members available to invite');
+        return;
+      }
+
+      socket.emit("call-group", {
+        targetUserIds,
+        roomId,
+        groupId: selectedUser?._id,
+        callerName: authUser?.fullName || authUser?.email || 'User',
+      });
+    } else {
+      socket.emit("call-user", {
+        targetUserId: selectedUser._id,
+        roomId
+      });
+    }
   };
 
 
-  const endCall = () => {
+  const resetCallState = useCallback((message = 'Call ended') => {
     if (audioRef.current) {
       audioRef.current.pause();          // ⏸ Pause music
       audioRef.current.currentTime = 0;  // ⏮ Reset to start
+    }
+
+    if (audioRef2.current) {
+      audioRef2.current.pause();
+      audioRef2.current.currentTime = 0;
     }
 
     if (currentCallRef.current) {
       currentCallRef.current.close();
       currentCallRef.current = null;
     }
+
+    Object.values(peersRef.current).forEach((peer) => {
+      try {
+        peer.close();
+      } catch (err) {
+        console.error('Failed to close peer connection:', err);
+      }
+    });
+    peersRef.current = {};
+    peerNamesRef.current = {};
+    setPeers([]);
+
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
     }
+
+    if (currentRoomIdRef.current) {
+      socket.emit('leave-room', { roomId: currentRoomIdRef.current });
+      currentRoomIdRef.current = null;
+    }
+
+    setCalling(false);
     setCallActive(false);
     setConnecting(false);
-    setNotification('Call ended');
+    setNotification(message);
     // audioChunksRef.current = []; // clear after sending
+  }, [socket]);
+
+  const endCall = () => {
+    const activePeerIds = Object.keys(peersRef.current);
+    activePeerIds.forEach((peerId) => {
+      socket.emit('end-call', { target: peerId });
+    });
+
+    resetCallState('Call ended');
   };
 
 
@@ -427,18 +606,63 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
 
 
 
+  const hasRemotePeer = peers.length > 0;
+  const isInCallState = callActive || hasRemotePeer || connecting || Calling;
+
   const getCallStatus = () => {
     if (!onlineUsers.includes(selectedUser._id)) return 'User is offline';
     if (!isInitialized) return 'Initializing...';
+    if (callActive || hasRemotePeer) return 'Connected';
     if (connecting) return 'Connecting...';
     if (Calling) return "Calling..."
-    if (callActive) return 'Connected';
 
     return 'Ready to connect';
   };
 
+  const primaryRemotePeer = peers[0] || null;
+  const otherPeers = peers.slice(1);
+  const primaryRemoteName = primaryRemotePeer?.displayName || selectedUser?.fullName || selectedUser?.name || 'Remote User';
+
+  useEffect(() => {
+    if (!incomingCall?.roomId) return;
+    currentRoomIdRef.current = incomingCall.roomId;
+  }, [incomingCall]);
+
+  useEffect(() => {
+    if (!remoteVideoRef.current || !primaryRemotePeer?.stream) return;
+    remoteVideoRef.current.srcObject = primaryRemotePeer.stream;
+  }, [primaryRemotePeer]);
+
+  useEffect(() => {
+    const handleCallEnded = ({ from }) => {
+      const peer = peersRef.current[from];
+      if (peer) {
+        try {
+          peer.close();
+        } catch (err) {
+          console.error('Failed to close remote peer on call-ended:', err);
+        }
+        delete peersRef.current[from];
+      }
+      delete peerNamesRef.current[from];
+
+      setPeers((prev) => prev.filter((p) => p.peerId !== from));
+
+      const hasRemainingPeers = Object.keys(peersRef.current).length > 0;
+      if (!hasRemainingPeers) {
+        resetCallState('Remote user ended the call');
+      }
+    };
+
+    socket.on('call-ended', handleCallEnded);
+
+    return () => {
+      socket.off('call-ended', handleCallEnded);
+    };
+  }, [resetCallState, socket]);
+
   return (
-    <div className="min-h-screen z-[10] bg-base-100  p-6">
+    <div className="min-h-screen z-[10] bg-gradient-to-b from-base-200 to-base-100 p-6">
       <audio ref={audioRef2} src={"/sound/unavailable.mp3"} preload="auto" />
       <audio ref={audioRef} src={"/sound/outgoing.mp3"} preload="auto" />
       <div className="max-w-6xl mx-auto">
@@ -450,30 +674,36 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
         )}
 
 
-
+<div
+          ref={videoContainerRef}
+          className="rounded-2xl border border-base-300 bg-base-100 flex flex-col justify-center items-center p-6 shadow-xl mb-6"
+        >
         {/* Header */}
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold  mb-2">
+        {/* <div className="mb-6 rounded-2xl border border-base-300/70 bg-base-100/90 p-4 text-center shadow-sm"> */}
+          {/* <h1 className="text-3xl font-bold mb-2">
             <BotMessageSquare className="inline w-8 h-8 mr-2" />
             Rapid Chat Calls
-          </h1>
-          <p className="text-sm mt-2">
-            {Calling && <span className="text-yellow-500 animate-pulse">Calling...</span>}
-            {connecting && <span className="text-blue-500 animate-pulse">Connecting...</span>}
-            {callActive && <span className="text-green-500">Live</span>}
-            {!callActive && !Calling && !connecting && <span className="text-gray-400">Idle</span>}
+          </h1> */}
+          <p className="text-sm mt-2 w-full text-center">
+            {(Calling || connecting) && <span className="text-yellow-500 animate-pulse">{getCallStatus()}</span>}
+            {!Calling && !connecting && (callActive || hasRemotePeer) && <span className="text-green-500">{getCallStatus()}</span>}
+            {!Calling && !connecting && !callActive && !hasRemotePeer && <span className="text-gray-400">{getCallStatus()}</span>}
           </p>
-        </div>
+        {/* </div> */}
 
         {/* Video Container */}
-        <div
-          ref={videoContainerRef}
-          className="  rounded-lg shadow-lg p-6 mb-6"
-        >
-          <p>{peers.length + 1} participants</p>
-          <div className="flex h-full w-full justify-center items-center gap-6">
+        
+          <p className="mb-3 text-sm font-medium text-base-content/70">{peers.length + 1} participants</p>
+          
+          {/* Unified Grid for all participants */}
+          <div className={`grid gap-4 w-[80%] ${
+            peers.length === 0 ? 'grid-cols-1' : 
+            peers.length === 1 ? 'grid-cols-2' : 
+            peers.length <= 3 ? 'grid-cols-2 lg:grid-cols-3' :
+            'grid-cols-2 lg:grid-cols-4'
+          }`}>
             {/* Local Video */}
-            <div className="absolute bottom-4 right-4 w-32 h-24 rounded-lg overflow-hidden border border-white">
+            <div className="relative rounded-xl overflow-hidden border border-base-300 bg-black ring-1 ring-base-300/40 aspect-video">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -481,26 +711,48 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
                 playsInline
                 className="w-full h-full object-cover"
               />
+              <span className="absolute bottom-2 left-2 text-xs bg-black/65 px-2 py-1 rounded-md">
+                {authUser?.fullName || authUser?.email || 'You'}
+              </span>
             </div>
 
-            {/* Remote Video */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full">
-              {peers.map(peer => (
-                <div key={peer.peerId} className="relative">
-                  <video
-                    autoPlay
-                    playsInline
-                    className="w-full h-48 bg-black rounded-lg object-cover"
-                    ref={video => {
-                      if (video) video.srcObject = peer.stream;
-                    }}
-                  />
-                  <span className="absolute bottom-2 left-2 text-xs bg-black bg-opacity-60 px-2 py-1 rounded">
-                    User
-                  </span>
-                </div>
-              ))}
-            </div>
+            {/* Remote Peers Grid */}
+            {primaryRemotePeer && (
+              <div className="relative rounded-xl overflow-hidden border border-base-300 bg-black ring-1 ring-base-300/40 aspect-video">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <span className="absolute bottom-2 left-2 text-xs bg-black/65 px-2 py-1 rounded-md">
+                  {primaryRemoteName}
+                </span>
+              </div>
+            )}
+
+            {otherPeers.map(peer => (
+              <div key={peer.peerId} className="relative rounded-xl overflow-hidden border border-base-300 bg-black ring-1 ring-base-300/40 aspect-video">
+                <video
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                  ref={video => {
+                    if (video) video.srcObject = peer.stream;
+                  }}
+                />
+                <span className="absolute bottom-2 left-2 text-xs bg-black/65 px-2 py-1 rounded-md">
+                  {peer.displayName}
+                </span>
+              </div>
+            ))}
+
+            {/* Placeholder when no peer connected */}
+            {/* {peers.length === 0 && (
+              <div className="relative rounded-xl overflow-hidden border border-base-300 bg-black/20 ring-1 ring-base-300/40 aspect-video flex items-center justify-center">
+                <div className="text-sm text-base-200/60">Waiting for other person...</div>
+              </div>
+            )} */}
           </div>
         </div>
 
@@ -513,7 +765,7 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
   bg-black/70 backdrop-blur-md px-6 py-4 rounded-full shadow-xl flex items-center gap-6">
 
             {/* Start Call */}
-            {!callActive && (
+            {!isInCallState && (
               <button
                 onClick={startCall}
                 disabled={!isInitialized || callActive || connecting || Calling}
@@ -525,7 +777,7 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
             )}
 
             {/* End Call */}
-            {callActive && (
+            {isInCallState && (
               <button
                 onClick={endCall}
                 className="w-16 h-16 flex items-center justify-center rounded-full 
