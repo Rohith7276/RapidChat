@@ -149,17 +149,41 @@ io.on("connection", (socket) => {
 
 
 
+  const resolveTargetSocketIds = (target) => {
+    if (!target) return [];
+
+    if (Array.isArray(target)) {
+      return target
+        .map((targetUserId) => userSocketMap[targetUserId])
+        .filter(Boolean);
+    }
+
+    return [userSocketMap[target] || target].filter(Boolean);
+  };
+
   // Handle WebRTC offer
-  socket.on("offer", ({ target, sdp }) => {
-    io.to(target).emit("offer", { sdp, caller: socket.id });
+  socket.on("offer", (payload = {}) => {
+    const target = payload.target || payload.to;
+    const offer = payload.sdp || payload.offer;
+    resolveTargetSocketIds(target).forEach((socketId) => {
+      io.to(socketId).emit("offer", { offer, from: socket.id });
+    });
   });
 
-  socket.on("answer", ({ target, sdp }) => {
-    io.to(target).emit("answer", { sdp, caller: socket.id });
+  socket.on("answer", (payload = {}) => {
+    const target = payload.target || payload.to;
+    const answer = payload.sdp || payload.answer;
+    resolveTargetSocketIds(target).forEach((socketId) => {
+      io.to(socketId).emit("answer", { answer, from: socket.id });
+    });
   });
 
-  socket.on("ice-candidate", ({ target, candidate }) => {
-    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
+  socket.on("ice-candidate", (payload = {}) => {
+    const target = payload.target || payload.to;
+    const candidate = payload.candidate;
+    resolveTargetSocketIds(target).forEach((socketId) => {
+      io.to(socketId).emit("ice-candidate", { candidate, from: socket.id });
+    });
   });
 
   socket.on("end-call", ({ target }) => {
@@ -168,8 +192,8 @@ io.on("connection", (socket) => {
   });
 
   // Handle screen share request
-  socket.on('screen-share-request', (data) => {
-    const { to } = data;
+  socket.on('screen-share-request', (data = {}) => {
+    const { to, toUserIds, groupId } = data;
     const userInfo = getUserInfo(socket.id);
 
 
@@ -179,15 +203,22 @@ io.on("connection", (socket) => {
       isSharing: true
     });
 
-    io.to(to).emit('screen-share-request', {
-      from: socket.id,
-      fromUser: userInfo.userName || `User-${socket.id.substr(0, 6)}`,
-      timestamp: new Date()
+    const recipients = Array.isArray(toUserIds) && toUserIds.length > 0
+      ? toUserIds.flatMap((userId) => resolveTargetSocketIds(userId))
+      : resolveTargetSocketIds(to);
+
+    recipients.forEach((socketId) => {
+      io.to(socketId).emit('screen-share-request', {
+        from: socket.id,
+        fromUser: userInfo.userName || `User-${socket.id.substr(0, 6)}`,
+        groupId: groupId || null,
+        timestamp: new Date()
+      });
     });
   });
 
   // Handle screen share response
-  socket.on('screen-share-response', (data) => {
+  socket.on('screen-share-response', (data = {}) => {
     const { accepted, to } = data;
     const userInfo = getUserInfo(socket.id);
 
@@ -201,8 +232,8 @@ io.on("connection", (socket) => {
   });
 
   // Handle screen share ended
-  socket.on('screen-share-ended', (data) => {
-    const { to } = data;
+  socket.on('screen-share-ended', (data = {}) => {
+    const { to, toUserIds, groupId } = data;
     const userInfo = getUserInfo(socket.id);
 
 
@@ -212,11 +243,17 @@ io.on("connection", (socket) => {
       isSharing: false
     });
 
-    // Notify specific user or broadcast to room
-    if (to) {
-      io.to(to).emit('screen-share-ended', {
-        from: socket.id,
-        fromUser: userInfo.userName
+    const recipients = Array.isArray(toUserIds) && toUserIds.length > 0
+      ? toUserIds.flatMap((userId) => resolveTargetSocketIds(userId))
+      : resolveTargetSocketIds(to);
+
+    if (recipients.length > 0) {
+      recipients.forEach((socketId) => {
+        io.to(socketId).emit('screen-share-ended', {
+          from: socket.id,
+          fromUser: userInfo.userName,
+          groupId: groupId || null
+        });
       });
     } else if (userInfo.currentRoom) {
       socket.to(userInfo.currentRoom).emit('screen-share-ended', {

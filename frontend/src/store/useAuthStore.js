@@ -24,6 +24,17 @@ export const useAuthStore = create((set, get) => ({
   setVideoPeer: (data)=>{
     set({videoPeer: data})
   },
+  destroyPeer: () => {
+    const currentPeer = get().peer;
+    if (currentPeer && !currentPeer.destroyed) {
+      try {
+        currentPeer.destroy();
+      } catch (error) {
+        console.log("Error destroying peer:", error);
+      }
+    }
+    set({ peer: null, peerId: null, friendPeerId: null, callerName: null, videoPeer: null });
+  },
   removePeerId: () => {
     set({ friendPeerId: null })
   },
@@ -112,6 +123,8 @@ export const useAuthStore = create((set, get) => ({
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
+    get().destroyPeer();
+
     const socket = io(BASE_URL, {
       query: {
         userId: authUser._id,
@@ -125,10 +138,8 @@ export const useAuthStore = create((set, get) => ({
     });
 
     socket.on('send-local-peer-id', (data, callback) => {
-     
-
-      const peerId = get().peerId;
-      callback(peerId)
+      const peerId = get().peer?.id || get().peerId;
+      callback?.(peerId || null)
 
     });
 
@@ -154,6 +165,13 @@ export const useAuthStore = create((set, get) => ({
     p.on('open', (id) => {
       set({ peerId: id });
     });
+    p.on('close', () => {
+      set({ peerId: null });
+    });
+    p.on('error', (error) => {
+      console.log('Peer error:', error);
+      set({ peerId: null });
+    });
 
 
 
@@ -161,5 +179,6 @@ export const useAuthStore = create((set, get) => ({
   },
   disconnectSocket: () => {
     if (get().socket?.connected) get().socket.disconnect();
+    get().destroyPeer();
   },
 }));

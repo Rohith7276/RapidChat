@@ -4,9 +4,10 @@ import { useAuthStore } from '../../../store/useAuthStore';
 import { useChatStore } from '../../../store/useChatStore';
 import Loader from '../../Loader';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 const ScreenShare = () => {
-  const { socket, onlineUsers } = useAuthStore();
-  const { selectedUserSocketId } = useChatStore();
+  const { socket, onlineUsers, authUser } = useAuthStore();
+  const { selectedUser } = useChatStore();
   const [isSharing, setIsSharing] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -15,6 +16,8 @@ const ScreenShare = () => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const peerConnectionRef = useRef(null);
+  const peerConnectionsRef = useRef(new Map());
+  const pendingIceCandidatesRef = useRef(new Map());
   const localStreamRef = useRef(null);
 
   // WebRTC configuration
@@ -25,21 +28,65 @@ const ScreenShare = () => {
     ]
   };
 
+  const createOffer = async (targetId) => {
+    try {
+      const pc = peerConnectionsRef.current.get(targetId) || peerConnectionRef.current;
+      if (!pc) {
+        throw new Error('Peer connection not ready');
+      }
+
+      const existingTrackIds = new Set(pc.getSenders().map((sender) => sender.track?.id).filter(Boolean));
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          if (!existingTrackIds.has(track.id)) {
+            pc.addTrack(track, localStreamRef.current);
+          }
+        });
+      }
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      socket?.emit('offer', {
+        offer,
+        to: targetId
+      });
+    } catch (err) {
+      setError('Failed to create offer: ' + err.message);
+    }
+  };
+
   useEffect(() => {
     if (!socket || !socket.id) {
       setError('Socket or user ID not provided');
       return;
     }
 
-    // Initialize peer connection
-    const initPeerConnection = () => {
+    const isGroupShare = Boolean(selectedUser?.name);
+
+    const getTargetUserIds = () => {
+      if (isGroupShare) {
+        return (selectedUser?.membersInfo || [])
+          .map((member) => member._id)
+          .filter((memberId) => memberId && memberId !== authUser?._id);
+      }
+
+      return selectedUser?._id ? [selectedUser._id] : [];
+    };
+
+    const createPeerConnection = (targetId) => {
+      const existingConnection = peerConnectionsRef.current.get(targetId);
+      if (existingConnection) {
+        return existingConnection;
+      }
+
       const pc = new RTCPeerConnection(rtcConfig);
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit('ice-candidate', {
             candidate: event.candidate,
-            to: selectedUserSocketId
+            to: targetId
           });
         }
       };
@@ -60,21 +107,41 @@ const ScreenShare = () => {
         }
       };
 
+      peerConnectionsRef.current.set(targetId, pc);
       return pc;
     };
 
-    peerConnectionRef.current = initPeerConnection();
+    const flushPendingCandidates = async (targetId, pc) => {
+      const pendingCandidates = pendingIceCandidatesRef.current.get(targetId);
+      if (!pendingCandidates?.length) return;
+
+      for (const candidate of pendingCandidates) {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.error('Failed to flush ICE candidate:', err);
+        }
+      }
+
+      pendingIceCandidatesRef.current.delete(targetId);
+    };
+
+    // Initialize peer connection
+    peerConnectionRef.current = createPeerConnection(selectedUser?._id || socket.id);
 
     // Socket event listeners
     const handleOffer = async (data) => {
       try {
-        await peerConnectionRef.current.setRemoteDescription(data.offer);
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
+        const fromId = data.from;
+        const pc = createPeerConnection(fromId);
+        await pc.setRemoteDescription(data.offer);
+        await flushPendingCandidates(fromId, pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
         socket.emit('answer', {
-          answer: answer,
-          to: data.from
+          answer,
+          to: fromId
         });
       } catch (err) {
         setError('Failed to handle offer: ' + err.message);
@@ -83,7 +150,11 @@ const ScreenShare = () => {
 
     const handleAnswer = async (data) => {
       try {
-        await peerConnectionRef.current.setRemoteDescription(data.answer);
+        const pc = peerConnectionsRef.current.get(data.from) || peerConnectionRef.current;
+        if (pc) {
+          await pc.setRemoteDescription(data.answer);
+          await flushPendingCandidates(data.from, pc);
+        }
       } catch (err) {
         setError('Failed to handle answer: ' + err.message);
       }
@@ -91,10 +162,43 @@ const ScreenShare = () => {
 
     const handleIceCandidate = async (data) => {
       try {
-        await peerConnectionRef.current.addIceCandidate(data.candidate);
+        const pc = peerConnectionsRef.current.get(data.from) || peerConnectionRef.current;
+        if (pc) {
+          if (!pc.remoteDescription) {
+            const queuedCandidates = pendingIceCandidatesRef.current.get(data.from) || [];
+            queuedCandidates.push(data.candidate);
+            pendingIceCandidatesRef.current.set(data.from, queuedCandidates);
+            return;
+          }
+
+          await pc.addIceCandidate(data.candidate);
+        }
       } catch (err) {
         setError('Failed to add ICE candidate: ' + err.message);
       }
+    };
+
+    const handleScreenShareEnded = ({ from }) => {
+      const pc = peerConnectionsRef.current.get(from);
+
+      if (pc) {
+        try {
+          pc.close();
+        } catch (error) {
+          console.log('Error closing peer connection:', error);
+        }
+        peerConnectionsRef.current.delete(from);
+      }
+
+      pendingIceCandidatesRef.current.delete(from);
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      setIsReceiving(false);
+      setConnectionStatus('disconnected');
+      toast('Screen share ended');
     };
 
     const handleScreenShareRequest = async (data) => {
@@ -113,7 +217,7 @@ const ScreenShare = () => {
 
     const handleScreenShareResponse = async (data) => {
       if (data.accepted) {
-        await createOffer();
+        await createOffer(data.from);
       } else {
         setError('Screen share request was declined');
         stopSharing();
@@ -125,6 +229,7 @@ const ScreenShare = () => {
     socket.on('ice-candidate', handleIceCandidate);
     socket.on('screen-share-request', handleScreenShareRequest);
     socket.on('screen-share-response', handleScreenShareResponse);
+    socket.on('screen-share-ended', handleScreenShareEnded);
 
     return () => {
       socket.off('offer', handleOffer);
@@ -132,29 +237,19 @@ const ScreenShare = () => {
       socket.off('ice-candidate', handleIceCandidate);
       socket.off('screen-share-request', handleScreenShareRequest);
       socket.off('screen-share-response', handleScreenShareResponse);
+      socket.off('screen-share-ended', handleScreenShareEnded);
 
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
       }
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+      pendingIceCandidatesRef.current.clear();
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [socket, socket.id, selectedUserSocketId]);
-
-  const createOffer = async () => {
-    try {
-      const offer = await peerConnectionRef.current.createOffer();
-      await peerConnectionRef.current.setLocalDescription(offer);
-
-      socket.emit('offer', {
-        offer: offer,
-        to: selectedUserSocketId
-      });
-    } catch (err) {
-      setError('Failed to create offer: ' + err.message);
-    }
-  };
+  }, [socket, socket.id, selectedUser, authUser]);
 
   const startSharing = async () => {
     try {
@@ -191,14 +286,17 @@ const ScreenShare = () => {
       setIsSharing(true);
 
       // Send screen share request
-      if (selectedUserSocketId) {
+      const targetUserIds = getTargetUserIds();
+
+      if (targetUserIds.length > 0) {
         socket.emit('screen-share-request', {
           from: socket.id,
-          to: selectedUserSocketId
+          toUserIds: targetUserIds,
+          groupId: selectedUser?.name ? selectedUser._id : null
         });
       } else {
         // If no target specified, create offer immediately
-        await createOffer();
+        await createOffer(socket.id);
       }
 
     } catch (err) {
@@ -213,6 +311,15 @@ const ScreenShare = () => {
   };
 
   const stopSharing = () => {
+    const targetUserIds = getTargetUserIds();
+
+    if (socket?.connected && targetUserIds.length > 0) {
+      socket.emit('screen-share-ended', {
+        toUserIds: targetUserIds,
+        groupId: selectedUser?.name ? selectedUser._id : null
+      });
+    }
+
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -230,7 +337,7 @@ const ScreenShare = () => {
 
     setIsSharing(false);
     setConnectionStatus('disconnected');
-    window.location.href = "/"
+    toast.success('Screen sharing stopped'); 
     setError('');
   };
 
@@ -254,6 +361,16 @@ const ScreenShare = () => {
     return connectionStatus === 'connected' ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />;
   };
 
+  const getTargetUserIds = () => {
+    if (selectedUser?.name) {
+      return (selectedUser?.membersInfo || [])
+        .map((member) => member._id)
+        .filter((memberId) => memberId && memberId !== authUser?._id);
+    }
+
+    return selectedUser?._id ? [selectedUser._id] : [];
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-base-100 rounded-lg text-content  ">
       <div className="mb-6">
@@ -269,9 +386,11 @@ const ScreenShare = () => {
         </div>
 
         <div className="flex items-center gap-4 text-sm  ">
-          <span>User ID: <code className=" bg-base-content text-base-100 px-2 py-1 rounded">{socket.id}</code></span>
-          {selectedUserSocketId && (
-            <span>Target: <code className="  px-2 py-1 rounded">{selectedUserSocketId}</code></span>
+          <span>User ID: <code className=" bg-base-content text-base-100 px-2 py-1 rounded">{socket?.id}</code></span>
+          {selectedUser && (
+            <span>
+              Target: <code className="px-2 py-1 rounded">{selectedUser?.name || selectedUser?.fullName || selectedUser?._id}</code>
+            </span>
           )}
           <div className={`flex items-center gap-1 ${getStatusColor()}`}>
             {getStatusIcon()}
