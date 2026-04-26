@@ -1,33 +1,29 @@
-// pages/api/chat.js
 import Groq from "groq-sdk";
 
 
 
-export default async function getResponse(input) {
+export default async function getResponse(input, options = {}) {
     try {
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-        const chatCompletion = await groq.chat.completions.create({
-            "messages": [
+        const messages = Array.isArray(input)
+            ? input
+            : [
                 {
-                    "role": "user",
-                    "content": input
-                }
-            ],
-            // "model": "llama3-8b-8192",
-            model: "openai/gpt-oss-20b",
-            "temperature": 1,
-            "max_tokens": 1,
-            "top_p": 1,
-            "stream": true,
-            "stop": null
-        });
-        var response = ""
-        console.log(chatCompletion)
-        for await (const chunk of chatCompletion) {
-            response += chunk.choices[0]?.delta?.content || "";
-        }
+                    role: "user",
+                    content: String(input),
+                },
+            ];
 
-        return response;
+        const chatCompletion = await groq.chat.completions.create({
+            messages,
+            model: options.model || "openai/gpt-oss-20b",
+            temperature: options.temperature ?? 0.7,
+            max_tokens: options.max_tokens ?? 1200,
+            top_p: options.top_p ?? 1,
+            stream: false,
+        });
+
+        return chatCompletion.choices?.[0]?.message?.content?.trim() || "";
     }
     catch (e) {
         console.log("Error in getting response from ai",e)

@@ -2,8 +2,18 @@ import mongoose from "mongoose";
 
 const aiMessageSchema = new mongoose.Schema(
     {
+        conversationKey: {
+            type: String,
+            required: true,
+            index: true,
+        },
         text: {
             type: String,
+            required: true,
+        },
+        role: {
+            type: String,
+            enum: ["user", "assistant", "memory"],
             required: true,
         },
         senderId: {
