@@ -100,23 +100,23 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
                     </p>
                 </div>
             </div>
-            <div id='boxDiv' className='absolute    top-0 left-0 hidden justify-center h-screen w-screen  items-center'>
-                <div id='backDiv' className='bg-black hidden opacity-0 absolute top-0 left-0 w-screen h-screen z-[100] '>
+            <div id='boxDiv' className='fixed inset-0 hidden justify-center items-center p-2 sm:p-4 z-[9999]'>
+                <div id='backDiv' className='bg-black hidden opacity-0 fixed inset-0 z-[100] '>
                 </div>
-                <div ref={popUp} className='scale-50 border border-white hidden rounded-l-md   h-[70%] w-[60%]   bg-base-100  z-[101]'>
-                    <button className='ml-[-1.34rem] w-[1.33rem] absolute bg-base-100 text-sm h-10 mt-5 rounded-l-sm z-[99]' onClick={() => {
+                <div ref={popUp} className='relative scale-50 border border-white hidden rounded-md h-[92vh] w-[96vw] max-w-6xl bg-base-100 z-[101] overflow-hidden'>
+                    <button className='absolute right-3 top-3 w-8 h-8 flex items-center justify-center bg-base-100 text-sm rounded-md z-[102] border border-base-300' onClick={() => {
                         closeAnimation()
                     }}>
                         <X />
                     </button>
-                    <section className='flex gap-5 p-[2rem] justify-around'>
-                        <div className='flex flex-col gap-8 justify-around items-center'>
-                            <div className='flex gap-8' >
+                    <section className='flex flex-col lg:flex-row gap-5 p-4 sm:p-6 lg:p-8 h-full overflow-y-auto'>
+                        <div className='flex flex-col gap-8 justify-around items-center w-full lg:flex-1 min-w-0'>
+                            <div className='flex flex-col sm:flex-row gap-6 sm:gap-8 w-full items-center sm:items-start' >
 
                                 <div className='flex flex-col gap-3'>
 
                                     <div className="avatar">
-                                        <div className=" rounded-full relative w-[10rem]">
+                                        <div className=" rounded-full relative w-36 sm:w-40">
                                             <img loading="blur" className="  rounded-full object-cover border-4 " src={selectedUser?.name ? selectedUser?.profilePic || "/group.png" : selectedUser?.profilePic || "/avatar.png"} alt={selectedUser?.fullName} />
                                         </div>
                                     </div>
@@ -124,7 +124,7 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
                                 </div>
 
 
-                                <div className="space-y-6">
+                                <div className="space-y-6 w-full">
                                     <div className="space-y-1.5">
                                         <div className="text-sm text-zinc-400 flex items-center gap-2">
                                             <User className="w-4 h-4" />
@@ -153,17 +153,16 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
 
                                 </div>
                             </div>
-                            <div className='flex justify-center gap-3 items-center flex-col'>
+                            <div className='flex justify-center gap-3 items-center flex-col w-full'>
                                 <div className="text-sm text-zinc-400 flex   items-center gap-2">
                                     <Users className="w-4 h-4" />
                                     Members
                                 </div>
-                                <div className='h-[50%]   flex flex-wrap'>
+                                <div className='max-h-48 sm:max-h-64 overflow-y-auto flex flex-wrap justify-center gap-2 w-full'>
 
                                     {selectedUser?.membersInfo?.map(item => (
-                                        <div >
+                                        <div key={item._id}>
                                             <button
-                                                key={item._id}
                                                 className={`
               w-full p-3 flex items-center gap-3
               hover:bg-base-300 transition-colors
@@ -184,26 +183,26 @@ const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
                             </ div>
                         </div>
 
-                        <div className='flex flex-col gap-3 '>
+                        <div className='flex flex-col gap-3 w-full lg:flex-1 min-w-0'>
                             <h1 className="text-sm text-zinc-400 flex items-center gap-2"><HistoryIcon className='w-4 h-4' /> History</h1>
 
                             {History && (
-                                <ol tabIndex={0} onBlur={() => setHistory(false)} className="bg-base-300 border border-white  rounded-md w-[25rem] h-[20rem] overflow-y-scroll  p-4 flex flex-col gap-3     shadow-md shadow-black ">
+                                <ol tabIndex={0} onBlur={() => setHistory(false)} className="bg-base-300 border border-white rounded-md w-full h-[18rem] sm:h-[20rem] lg:h-full overflow-y-scroll p-3 sm:p-4 flex flex-col gap-3 shadow-md shadow-black ">
                                     {streamData?.allStream?.data?.length == 0 && <div className='w-full text-center flex justify-center items-center h-full'>No History</div>}
                                     {streamData?.allStream?.data && [...streamData?.allStream?.data].reverse().map((data, idx) => (
                                         <li onClick={() => {
                                             getSpecificStream(data?._id).then(() => { data?.streamInfo.type === "youtube" ? navigate("/stream/youtube-player") : navigate("/stream/file") }
                                             )
 
-                                        }} key={idx} className='flex p-2 bg-base-200 hover:bg-base-100 cursor-pointer rounded-md gap-4'>
+                                        }} key={idx} className='flex flex-col sm:flex-row p-2 bg-base-200 hover:bg-base-100 cursor-pointer rounded-md gap-4'>
                                             {/* Example conditional rendering */}
                                             {data?.streamInfo.type === "youtube" ? (
-                                                <img className='w-[7rem] h-[5rem]'
+                                                <img className='w-full sm:w-[7rem] h-40 sm:h-[5rem] object-cover rounded'
                                                     src={`https://img.youtube.com/vi/${getYouTubeId(data?.streamInfo.url)}/hqdefault.jpg`}
                                                     alt="YouTube thumbnail"
                                                 />
                                             ) : (
-                                                <img className='w-[7rem] h-[5rem]'
+                                                <img className='w-full sm:w-[7rem] h-40 sm:h-[5rem] object-cover rounded'
                                                     src="https://assets.monica.im/tools-web/_next/static/media/pdf2word.99a03821.png"
                                                     alt=""
                                                 />

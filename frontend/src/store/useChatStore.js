@@ -45,6 +45,9 @@ export const useChatStore = create((set, get) => ({
 
   addFriend: async (friendId) => {
     try {
+      if(friendId === "")
+        return toast.error("Please enter a valid friend ID");
+
       const res = await axiosInstance.patch(`/auth/add-friend/${friendId}`);
       set({ users: res.data.updatedFriends });
       toast.success("Friend added successfully");
