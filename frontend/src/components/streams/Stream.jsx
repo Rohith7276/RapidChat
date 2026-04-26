@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 const stream = () => {
     const navigate = useNavigate()
     const [History, setHistory] = useState(false)
-    const { setStreamMode, setStartStreaming, getSpecificStream, setStreamYoutube, streamData, getStream } = useStreamStore();
+    const { setStreamMode, setStartStreaming, getSpecificStream, setStreamYoutube, streamData, streamHistory, getStream } = useStreamStore();
    useEffect(() => {
      console.log(streamData)
    
@@ -36,8 +36,8 @@ const stream = () => {
                 <button className=" btn " onClick={() => {setHistory(!History);  }}><HistoryIcon /> </button> 
                 {History && (
                     <ol  tabIndex={0} onBlur={() => setHistory(false)} className="bg-base-300  rounded-md w-[25rem] h-[20rem] overflow-y-scroll  p-4 flex flex-col gap-3 absolute   mt-[4rem] shadow-md shadow-black ">
-                        {streamData?.allStream?.data?.length == 0 && <div className='w-full text-center flex justify-center items-center h-full'>No History</div>}
-                        {streamData?.allStream?.data && [...streamData?.allStream?.data].reverse().map((data, idx) => (
+                        {streamHistory?.data?.length == 0 && <div className='w-full text-center flex justify-center items-center h-full'>No History</div>}
+                        {streamHistory?.data && [...streamHistory.data].reverse().map((data, idx) => (
                             <li onClick={()=>{ getSpecificStream(data?._id).then(()=>
                              {        data?.streamInfo.type === "youtube" ?  navigate("/stream/youtube-player"): navigate("/stream/file") }
                                 )

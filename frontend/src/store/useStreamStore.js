@@ -123,8 +123,9 @@ export const useStreamStore = create((set, get) => ({
   endStream: async () => {
     try {
       const selectedUser = useChatStore.getState().selectedUser;
-      const res = await axiosInstance.get(`/stream/end-stream/${selectedUser._id}`)
-       set({ streamData: res })
+      await axiosInstance.get(`/stream/end-stream/${selectedUser._id}`)
+      set({ streamData: [], streamSet: false, startStreaming: false })
+      toast.success("Stream ended successfully");
     } catch (error) {
       toast.error("Couldn't end the stream");
     }

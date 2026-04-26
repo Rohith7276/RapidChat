@@ -193,9 +193,14 @@ regarding the information data : ${data.slice(0, 5000)}
         });
 
         if (!stream) return res.status(400).json({ message: "Stream not created" });
-        const receiverSocketId = getReceiverSocketId(recieverId);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("stream", stream);
+
+        if (groupId) {
+            io.to(String(groupId)).emit("stream", stream);
+        } else {
+            const receiverSocketId = getReceiverSocketId(recieverId);
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit("stream", stream);
+            }
         }
 
         return res.status(201).json(stream);
@@ -332,6 +337,15 @@ export const geSpecificStream = async (req, res) => {
             summary: streams.summary
         });
 
+        if (stream.groupId) {
+            io.to(String(stream.groupId)).emit("stream", stream);
+        } else if (stream.receiverId) {
+            const receiverSocketId = getReceiverSocketId(String(stream.receiverId));
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit("stream", stream);
+            }
+        }
+
 
         return res.status(200).json(stream);
     } catch (error) {
@@ -355,7 +369,7 @@ export const endStream = async (req, res) => {
         }
         if (!friend) return res.status(404).json({ message: "Friend not found" });
 
-        await Stream.findOneAndUpdate(
+        const endedStream = await Stream.findOneAndUpdate(
             {
                 $and: [
                     {
@@ -372,6 +386,10 @@ export const endStream = async (req, res) => {
             { new: true }
         );
 
+        if (!endedStream) {
+            return res.status(404).json({ message: "No active stream found" });
+        }
+
         const streams = await Stream.find(
             {
                 $or: [{
@@ -383,10 +401,21 @@ export const endStream = async (req, res) => {
                 },]
 
             });
-        const receiverSocketId = getReceiverSocketId(friendId);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("stream", streams);
+
+        if (friend && friend.constructor?.modelName === "Group") {
+            io.to(String(friend._id)).emit("stream", endedStream);
+        } else {
+            const receiverSocketId = getReceiverSocketId(friendId);
+            const senderSocketId = getReceiverSocketId(String(userId));
+
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit("stream", endedStream);
+            }
+            if (senderSocketId) {
+                io.to(senderSocketId).emit("stream", endedStream);
+            }
         }
+
         return res.status(200).json(streams);
     } catch (error) {
         console.error("Error in endStream: ", error.message);
