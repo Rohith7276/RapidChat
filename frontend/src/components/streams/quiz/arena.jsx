@@ -16,9 +16,14 @@ const Quiz = () => {
   const [score, setScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState(null)
   const [quizData, setQuizData] = useState(null)
+  const [showQuizPrompt, setShowQuizPrompt] = useState(false);
+  const [quizApproved, setQuizApproved] = useState(false);
 const navigate = useNavigate()
   const currentQuestion = quizData?.quiz[currentQ];
 const [disable, setDisable] = useState(false)
+
+  // Check if current user is the host of the stream
+  const isHost = streamData?.createdBy === authUser?._id || streamData?.createdBy?._id === authUser?._id;
   useEffect(() => {
     console.log(streamData)
     
@@ -30,6 +35,10 @@ const [disable, setDisable] = useState(false)
     if (streamData.streamInfo?.leaderboard){
       setLeaderboard(JSON.parse(streamData.streamInfo?.leaderboard))
       console.log(JSON.parse(streamData.streamInfo?.leaderboard))
+    }
+    // Show quiz prompt if user is host and no quiz data exists yet
+    if (isHost && !streamData?.streamInfo?.quizData && !showQuizPrompt) {
+      setShowQuizPrompt(true);
     }
   }
   catch(e){
@@ -70,7 +79,18 @@ const [disable, setDisable] = useState(false)
 
   };
 
-  if(!streamData?.streamInfo?.quizData){
+  const handleApproveQuiz = () => {
+    setShowQuizPrompt(false);
+    setQuizApproved(true);
+  };
+
+  const handleRejectQuiz = () => {
+    setShowQuizPrompt(false);
+    navigate("/stream");
+  };
+
+  if(!streamData?.streamInfo?.quizData && !quizApproved){
+    console.log(streamData.streamInfo.quizData)
     return <h2 className="text-xl text-center   font-bold mb-4">
       <div className="w-full p-8 justify-end flex">
         <Link to={"/stream"}   className="btn" ><MoveLeft /> </Link>
@@ -84,105 +104,139 @@ const [disable, setDisable] = useState(false)
       <div className="w-full p-8 justify-end flex">
         <button disabled={disable} onClick={async() => { setDisable(true); if (!streamData?.streamInfo?.leaderboard?.includes(authUser._id.toString())) await submit(); navigate("/stream"); }} className="btn" ><MoveLeft /> </button>
       </div>
-      <div className="p-6 text-base-content rounded-2xl w-full max-w-2xl m-auto">
-        {!streamData?.streamInfo?.leaderboard?.includes(authUser._id.toString()) ? (
-          <div>
-            <h2 className="text-xl font-bold mb-4">
-              Question {currentQ + 1} of {quizData?.quiz.length}
-            </h2>
 
-            <p className="font-medium   text-primary mb-4">{currentQuestion?.question}</p>
-
-            {currentQuestion?.options.map((opt, i) => {
-              let bgClass = "bg-base-200 hover:bg-base-300";
-              if (showAnswer) {
-                if (i === currentQuestion?.answer.index) bgClass = "bg-green-500 text-white";
-                else if (i === selected && i !== currentQuestion?.answer.index) bgClass = "bg-red-600 text-white";
-              }
-              return (
-                <button
-                  key={i}
-                  onClick={() => handleAnswerClick(i)}
-                  className={`w-full text-left px-4 py-2 mb-2 rounded-lg transition ${bgClass}`}
-                >
-                  {opt.title}
-                </button>
-              );
-            })}
-
-            {showAnswer && (
-              <div className="mt-3 p-3 bg-base-300 rounded">
-                <strong>Answer:</strong> {currentQuestion.answer.title}
-                <p>{currentQuestion.answer.description}</p>
-              </div>
-            )}
-
-            {showAnswer && (
-              <button
-                onClick={handleNext}
-                className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary-focus"
-              >
-                Next
+      {/* Quiz Approval Modal for Host */}
+      {showQuizPrompt && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Create a Quiz?</h3>
+            <p className="py-4 text-base-content">
+              Would you like to create a quiz for this stream? This will allow attendees to test their knowledge.
+            </p>
+            <div className="modal-action gap-3">
+              <button onClick={handleRejectQuiz} className="btn btn-outline">
+                No, Skip Quiz
               </button>
-            )}
+              <button onClick={handleApproveQuiz} className="btn btn-primary">
+                Yes, Create Quiz
+              </button>
+            </div>
           </div>
-        ) : (
-          <>
-            {streamData?.streamInfo?.quizData ?
-              <div className="text-center cursor-default">
-                <h2 className="text-2xl font-bold">🎉 Quiz Completed!</h2>
-                <p className="mt-2 text-lg">
-                  Your Score: {score}/{quizData?.quiz.length}
-                  <br />
-                  Points: {score * 10}
-                </p>
+          <form method="dialog" className="modal-backdrop">
+            <button onClick={handleRejectQuiz}>close</button>
+          </form>
+        </dialog>
+      )}
 
-                {/* Badge */}
-                <div className="mt-3">
-                  {score === quizData?.quiz.length ? (
-                    <p className="text-xl">🏆 Gold Badge</p>
-                  ) : score >= quizData?.quiz.length * 0.7 ? (
-                    <p className="text-xl">🥈 Silver Badge</p>
-                  ) : score >= quizData?.quiz.length * 0.4 ? (
-                    <p className="text-xl">🥉 Bronze Badge</p>
-                  ) : (
-                    <p className="text-xl">📖 Keep Learning Badge</p>
-                  )}
+      {/* Show message if host hasn't approved quiz yet */}
+      {isHost && !quizApproved && showQuizPrompt && (
+        <div className="text-center p-6">
+          <h2 className="text-xl font-bold">Awaiting Quiz Approval...</h2>
+        </div>
+      )}
+
+      {/* Only show quiz if approved by host (or if user is not host) */}
+      {(!isHost || quizApproved) && (
+        <div className="p-6 text-base-content rounded-2xl w-full max-w-2xl m-auto">
+          {!streamData?.streamInfo?.leaderboard?.includes(authUser._id.toString()) ? (
+            <div>
+              <h2 className="text-xl font-bold mb-4">
+                Question {currentQ + 1} of {quizData?.quiz.length}
+              </h2>
+
+              <p className="font-medium   text-primary mb-4">{currentQuestion?.question}</p>
+
+              {currentQuestion?.options.map((opt, i) => {
+                let bgClass = "bg-base-200 hover:bg-base-300";
+                if (showAnswer) {
+                  if (i === currentQuestion?.answer.index) bgClass = "bg-green-500 text-white";
+                  else if (i === selected && i !== currentQuestion?.answer.index) bgClass = "bg-red-600 text-white";
+                }
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleAnswerClick(i)}
+                    className={`w-full text-left px-4 py-2 mb-2 rounded-lg transition ${bgClass}`}
+                  >
+                    {opt.title}
+                  </button>
+                );
+              })}
+
+              {showAnswer && (
+                <div className="mt-3 p-3 bg-base-300 rounded">
+                  <strong>Answer:</strong> {currentQuestion.answer.title}
+                  <p>{currentQuestion.answer.description}</p>
                 </div>
+              )}
 
-                {/* Leaderboard */}
-                <div className="mt-6">
-                  <h3 className="text-lg font-bold mb-3">🏅 Leaderboard</h3>
-                  <table className="w-full border-collapse border border-base-300">
-                    <thead>
-                      <tr className="bg-base-400">
-                        <th className="border border-base-300 px-3 py-1">Rank</th>
-                        <th className="border border-base-300 px-3 py-1">Name</th>
-                        <th className="border border-base-300 px-3 py-1">Points</th>
-                        <th className="border border-base-300 px-3 py-1">Badge</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaderboard?.map((entry, index) => (
-                        <tr key={index}>
-                          <td className="border border-base-300 px-3 py-1">{index + 1}</td>
-                          <td className="border border-base-300 px-3 py-1">{entry.name}</td>
-                          <td className="border border-base-300 px-3 py-1">{entry.points}</td>
-                          <td className="border border-base-300 px-3 py-1">{entry.badge}</td>
+              {showAnswer && (
+                <button
+                  onClick={handleNext}
+                  className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary-focus"
+                >
+                  Next
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {streamData?.streamInfo?.quizData ?
+                <div className="text-center cursor-default">
+                  <h2 className="text-2xl font-bold">🎉 Quiz Completed!</h2>
+                  <p className="mt-2 text-lg">
+                    Your Score: {score}/{quizData?.quiz.length}
+                    <br />
+                    Points: {score * 10}
+                  </p>
+
+                  {/* Badge */}
+                  <div className="mt-3">
+                    {score === quizData?.quiz.length ? (
+                      <p className="text-xl">🏆 Gold Badge</p>
+                    ) : score >= quizData?.quiz.length * 0.7 ? (
+                      <p className="text-xl">🥈 Silver Badge</p>
+                    ) : score >= quizData?.quiz.length * 0.4 ? (
+                      <p className="text-xl">🥉 Bronze Badge</p>
+                    ) : (
+                      <p className="text-xl">📖 Keep Learning Badge</p>
+                    )}
+                  </div>
+
+                  {/* Leaderboard */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-bold mb-3">🏅 Leaderboard</h3>
+                    <table className="w-full border-collapse border border-base-300">
+                      <thead>
+                        <tr className="bg-base-400">
+                          <th className="border border-base-300 px-3 py-1">Rank</th>
+                          <th className="border border-base-300 px-3 py-1">Name</th>
+                          <th className="border border-base-300 px-3 py-1">Points</th>
+                          <th className="border border-base-300 px-3 py-1">Badge</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {leaderboard?.map((entry, index) => (
+                          <tr key={index}>
+                            <td className="border border-base-300 px-3 py-1">{index + 1}</td>
+                            <td className="border border-base-300 px-3 py-1">{entry.name}</td>
+                            <td className="border border-base-300 px-3 py-1">{entry.points}</td>
+                            <td className="border border-base-300 px-3 py-1">{entry.badge}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              :
-              <h2 className="text-xl text-center   font-bold mb-4">
-                Please stream a pdf or a youtube video to attend quiz
-              </h2>}
-          </>
-        )}
+                :
+                <h2 className="text-xl text-center   font-bold mb-4">
+                  Please stream a pdf or a youtube video to attend quiz
+                </h2>}
+            </>
+          )}
 
-      </div>
+        </div>
+      )}
     </>
   );
 };
