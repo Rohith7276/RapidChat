@@ -222,7 +222,8 @@ export const AiChat = async (req, res) => {
     }
     res.status(200).json(newMessage);
   } catch (error) { 
-    res.status(500).json({ message: "Internal Server Error" });
+    console.log("Error in ai chat controller", error?.message);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
@@ -364,7 +365,7 @@ export const streamAi = async (req, res) => {
   }
   catch (error) {
     console.log("Error in ai stream controller", error?.message);
-    return { message: "Internal Server Error" };
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
