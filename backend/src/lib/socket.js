@@ -4,18 +4,29 @@ import express from "express";
 import cors from "cors";
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOrigin = (origin, callback) => {
+  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+
+  return callback(new Error("Not allowed by CORS"));
+};
+
 app.use(
   cors({
-    // origin: process.env.CORS_ORIGIN,
-    origin: "https://rapid-chat-five.vercel.app",
+    origin: corsOrigin,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   })
 );
 const io = new Server(server, {
   cors: {
-    // origin: [process.env.CORS_ORIGIN],
-    origin: ["https://rapid-chat-five.vercel.app"],
+    origin: corsOrigin,
   },
 });
 const rooms = {}; // add this at top

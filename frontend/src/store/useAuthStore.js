@@ -1,12 +1,12 @@
 import { create } from "zustand";
-import { axiosInstance } from "../lib/axios.js";
+import { axiosInstance, getApiBaseUrl } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 import Peer from 'peerjs';
 import { useChatStore } from "./useChatStore.js";
 
 // const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:3000" : import.meta.env.VITE_API_BASE_URL +"/";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL + "/";
+const BASE_URL = getApiBaseUrl().replace(/\/api$/, "/");
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
