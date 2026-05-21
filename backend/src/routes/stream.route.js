@@ -16,6 +16,7 @@ router.get("/update-stream/:id/:points", protectRoute, updateStream);
 router.get("/stream-control/:id/:action/:streamId", protectRoute, streamControls);
 router.get("/check-url/",protectRoute, checkUrl);
 router.post("/stream-ai", protectRoute, streamAi);
+router.post("/ask-question", protectRoute, streamAi);
 router.post("/create-stream", protectRoute, createStream);
 
 export default router;

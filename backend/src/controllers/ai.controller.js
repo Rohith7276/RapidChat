@@ -1,9 +1,11 @@
 import getResponse from "../lib/ai.js";
 import { AiMessage } from "../models/aiMessage.model.js";
 import Message from "../models/message.model.js";
+import Stream from "../models/stream.model.js";
 import { YoutubeTranscript } from 'youtube-transcript';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import fs from "fs";
+import { getStreamContextForQuestion } from "../lib/rag/similarity.js";
 // import pdfParse from "pdf-parse";
 
 const AI_MEMORY_TRIGGER_TURNS = 12;
@@ -249,20 +251,72 @@ export const AiSummary = async (x, isPdf) => {
 
 export const streamAi = async (req, res) => {
   try {
-    const { data, input } = req.body
-    const { receiverId, groupId } = req.body;  
+    const { data, input, streamId } = req.body;
+    const { receiverId, groupId } = req.body;
     const normalizedInput = String(input || "").trim();
 
     if (!normalizedInput) {
       return res.status(400).json({ message: "Input is required" });
     }
 
+    let activeStream = null;
+
+    if (streamId) {
+      activeStream = await Stream.findById(streamId);
+    }
+
+    if (!activeStream && groupId) {
+      activeStream = await Stream.findOne({ groupId, stopTime: null }).sort({ createdAt: -1 });
+    }
+
+    if (!activeStream && receiverId) {
+      activeStream = await Stream.findOne({
+        $and: [
+          { stopTime: null },
+          {
+            $or: [
+              { receiverId, streamerId: req.user._id },
+              { streamerId: receiverId, receiverId: req.user._id },
+            ],
+          },
+        ],
+      }).sort({ createdAt: -1 });
+    }
+
+    // Resolve the correct stream first so retrieval searches the right in-memory index.
+    const streamContext = await getStreamContextForQuestion({
+      streamId: activeStream?._id || streamId || `${req.user._id}:${receiverId || groupId || "stream"}`,
+      question: normalizedInput,
+      topK: Number(process.env.RAG_TOP_K || 4),
+      textFallback: activeStream?.streamInfo?.data || data || "",
+      transcriptChunksFallback: activeStream?.streamInfo?.transcriptChunks || [],
+    });
+
+    const retrievalLabel = streamContext.retrievalMode === "timestamp"
+      ? `The user asked about the timestamp ${streamContext.timestamp}. Use the transcript excerpt that spans that exact time.`
+      : "Use the retrieved transcript excerpts to answer semantically.";
+
+    const retrievedChunksText = streamContext.context || (streamContext.chunks.length
+      ? streamContext.chunks
+          .map((chunk) => `Transcript excerpt ${chunk.index + 1} (score: ${chunk.score.toFixed(4)}):\n${chunk.text}`)
+          .join("\n\n")
+      : "No relevant transcript excerpt was found.");
+
     const response = await runAiConversation({
       input: normalizedInput,
       senderId: req.user._id,
       receiverId,
       groupId,
-      referenceData: data,
+      referenceData: [
+        `You are a user-facing assistant.`,
+        `Answer naturally, clearly, and briefly.`,
+        `Never mention backend details, embeddings, chunks, retrieval, context windows, or system internals.`,
+        `If the user asks about a timestamp, answer from the exact excerpt around that time and mention the timestamp clearly.`,
+        `If the answer is not in the provided excerpt, say that you could not find it in the transcript.`,
+        `Stream title: ${activeStream?.streamInfo?.title || "Untitled stream"}`,
+        retrievalLabel,
+        `Transcript excerpts:\n${retrievedChunksText}`,
+      ].join("\n\n"),
     });
 
     const newMessage = new Message({
@@ -291,7 +345,22 @@ export const streamAi = async (req, res) => {
     else {
       io.to(groupId).emit("receiveGroupMessage", msg);
     }
-    res.status(200).json(newMessage);
+    const responsePayload = {
+      ...newMessage.toJSON(),
+      answer: response,
+      timestamp: streamContext.retrievalMode === "timestamp" ? (streamContext.timestamp || null) : null,
+      timestampSeconds: streamContext.retrievalMode === "timestamp" ? (streamContext.seconds ?? null) : null,
+      aiMetadata: {
+        retrievalMode: streamContext.retrievalMode || "semantic",
+        timestamp: streamContext.retrievalMode === "timestamp" ? (streamContext.timestamp || null) : null,
+        timestampSeconds: streamContext.retrievalMode === "timestamp" ? (streamContext.seconds ?? null) : null,
+        matchedTimestamp: streamContext.matchedTimestamp || null,
+        matchedSeconds: streamContext.matchedSeconds ?? null,
+        context: streamContext.context || "",
+      },
+    };
+
+    res.status(200).json(responsePayload);
   }
   catch (error) {
     console.log("Error in ai stream controller", error?.message);

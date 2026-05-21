@@ -8,6 +8,8 @@ import path from 'path';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import { cloudinary } from "../lib/cloudinary.js";
 import PdfParse from "pdf-parse";
+import { clearStreamContext, indexStreamKnowledgeBase } from "../lib/rag/similarity.js";
+import { chunkTranscriptSegments, normalizeTranscriptSegments } from "../lib/rag/transcript.js";
 // import { YoutubeTranscript, YoutubeTranscriptDisabledError, YoutubeTranscriptNotAvailableError } from 'youtube-transcript-plus';
 import {
     Supadata,
@@ -18,6 +20,40 @@ import mongoose from "mongoose";
 const supadata = new Supadata({
     apiKey: process.env.youtube,
 });
+
+async function waitForTranscriptResult(transcriptResult) {
+    if (!transcriptResult?.jobId) {
+        return transcriptResult;
+    }
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+        const jobResult = await supadata.transcript.getJobStatus(transcriptResult.jobId);
+
+        if (jobResult?.status === "failed") {
+            throw new Error(jobResult.error || "YouTube transcript generation failed");
+        }
+
+        if (jobResult?.status === "completed" || jobResult?.status === "done" || jobResult?.content || jobResult?.transcript || jobResult?.segments) {
+            return jobResult;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    return transcriptResult;
+}
+
+function buildTranscriptPayload(transcriptResult) {
+    const normalizedSegments = normalizeTranscriptSegments(transcriptResult);
+    const transcriptChunks = chunkTranscriptSegments(normalizedSegments);
+    const transcriptText = transcriptChunks.map((chunk) => chunk.text).join(" ");
+
+    return {
+        transcriptText,
+        transcriptSegments: normalizedSegments,
+        transcriptChunks,
+    };
+}
 
 export const getVideoId = async (req, res) => {
     try {
@@ -77,27 +113,16 @@ export const createStream = async (req, res) => {
         if (type == "youtube") {
             const transcriptResult = await supadata.transcript({
                 url: url,
-                // lang: 'en', // optional
-                text: true, // optional: return plain text instead of timestamped chunks
+                text: false,
                 mode: 'auto', // optional: 'native', 'auto', or 'generate'
             });
 
-            // Check if we got a transcript directly or a job ID for async processing
-            if ('jobId' in transcriptResult) {
-                // For large files, we get a job ID and need to poll for results 
+            const resolvedTranscript = await waitForTranscriptResult(transcriptResult);
+            const transcriptPayload = buildTranscriptPayload(resolvedTranscript);
 
-                // Poll for job status
-                const jobResult = await supadata.transcript.getJobStatus(
-                    transcriptResult.jobId
-                );
-                if (jobResult.status === 'failed') {
-                    console.error('Transcript failed:', jobResult.error);
-                }
-            } else {
-                // For smaller files, we get the transcript directly
-                console.log('Transcript:', transcriptResult.content);
-            }
-            data = transcriptResult.content;
+            data = transcriptPayload.transcriptText || resolvedTranscript.content || "";
+            req.body.transcriptSegments = transcriptPayload.transcriptSegments;
+            req.body.transcriptChunks = transcriptPayload.transcriptChunks;
         }
         const group = groupId ? await Group.findById(groupId) : null;
 
@@ -169,6 +194,7 @@ regarding the information data : ${data.slice(0, 5000)}
 `
 
             );
+             console.log("quizData: ", quizData)
         }
 
         const stream = await Stream.create({
@@ -182,7 +208,9 @@ regarding the information data : ${data.slice(0, 5000)}
                 data,
                 title,
                 description,
-                quizData: quizData.slice(0, 5800),
+                transcriptSegments: req.body.transcriptSegments || [],
+                transcriptChunks: req.body.transcriptChunks || [],
+                quizData: quizData ? quizData.slice(0, 5800) : "",
                 leaderboard: ""
             },
             senderInfo: {
@@ -193,6 +221,20 @@ regarding the information data : ${data.slice(0, 5000)}
         });
 
         if (!stream) return res.status(400).json({ message: "Stream not created" });
+
+        if ((type === "pdf" || type === "youtube") && data) {
+            await indexStreamKnowledgeBase({
+                streamId: stream._id,
+                text: data,
+                transcriptSegments: req.body.transcriptSegments || [],
+                chunks: req.body.transcriptChunks || [],
+                metadata: {
+                    type,
+                    title,
+                    url,
+                },
+            });
+        }
 
         if (groupId) {
             io.to(String(groupId)).emit("stream", stream);
@@ -337,6 +379,19 @@ export const geSpecificStream = async (req, res) => {
             summary: streams.summary
         });
 
+        if (stream?.streamInfo?.data) {
+            await indexStreamKnowledgeBase({
+                streamId: stream._id,
+                text: stream.streamInfo.data,
+                chunks: stream.streamInfo.transcriptChunks || [],
+                metadata: {
+                    type: stream.streamInfo.type,
+                    title: stream.streamInfo.title,
+                    url: stream.streamInfo.url,
+                },
+            });
+        }
+
         if (stream.groupId) {
             io.to(String(stream.groupId)).emit("stream", stream);
         } else if (stream.receiverId) {
@@ -389,6 +444,8 @@ export const endStream = async (req, res) => {
         if (!endedStream) {
             return res.status(404).json({ message: "No active stream found" });
         }
+
+        clearStreamContext(endedStream._id);
 
         const streams = await Stream.find(
             {

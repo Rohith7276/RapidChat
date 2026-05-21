@@ -172,13 +172,13 @@ const YouTubePlayer = () => {
         }}
         onMouseDown={isFloating ? handleMouseDown : null}
       >
-            <div id="player" ref={playerRef} className="w-full h-full z-[100] "   ></div>
+            <div id="player" ref={playerRef} className="w-full h-full !z-[999] "   ></div>
           </div>
 
-          <div className="flex justify-between w-full px-11 items-center mt-4">
+          <div className="flex flex-wrap justify-between w-full px-4 sm:px-8 lg:px-11 items-center mt-4 gap-2 sm:gap-4">
             {streamData?.senderInfo?.fullName !== authUser?.fullName && (
               <button
-                className="bg-base-content text-base-300 p-2 px-3 rounded-md"
+                className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
                 onClick={async () => {
                   await axiosInstance.get(
                     `/stream/stream-control/${selectedUser._id}/999999/${streamData._id}`
@@ -190,13 +190,13 @@ const YouTubePlayer = () => {
             )}
            <button
         onClick={toggleFloating}
-        className={`${isFloating? "bg-gray-500": "bg-blue-600"} mt-4 px-4 py-2  text-white rounded-xl shadow-lg hover:bg-blue-700`}
+        className={`${isFloating? "bg-gray-500": "bg-blue-600"} mt-4 px-4 py-2  text-white rounded-xl shadow-lg hover:bg-blue-700 text-sm sm:text-base`}
       >
         { !isFloating?  <PictureInPicture/> : <PictureInPicture2Icon/> }
       </button>
             {streamData?.senderInfo?.fullName === authUser?.fullName && (
               <button
-                className="bg-base-content text-base-300 p-2 px-3 rounded-md"
+                className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
                 onClick={() => {
                   // setStreamData([]);
                   endStream(); 
@@ -240,7 +240,7 @@ const YouTubePlayer = () => {
               min={10}
               max={50}
               defaultValue={16}
-              className="bg-base-content  text-base-100"
+              className="bg-base-content  text-base-100 text-sm"
               onChange={(e) => {
                 document.documentElement.style.setProperty(
                   "--note-text-size",
@@ -249,7 +249,7 @@ const YouTubePlayer = () => {
                 localStorage.setItem("size", e.target.value);
               }} />
           </div>
-          <div className="mt-11  flex flex-col gap-6 justify-center items-center my-5">
+          <div className="mt-11  flex flex-col gap-6 justify-center items-center my-5 w-full px-2 sm:px-0">
             <textarea
               id="notesArea"
               name="notes"
@@ -263,10 +263,10 @@ const YouTubePlayer = () => {
               placeholder="Notes"
               value={notes}
               onChange={(e) => { setNotes(e.target.value); }}
-              className="w-[57vw] select-text rounded-md p-5 text-base-300  text-4xl max-h-full h-[20vh]"
+              className="w-full max-w-2xl select-text rounded-md p-5 text-base-300  text-2xl sm:text-4xl max-h-full h-[20vh]"
             ></textarea>
             <button
-              className="bg-base-content userselect  text-base-300 mb-3 p-2 px-3 rounded-md"
+              className="bg-base-content userselect  text-base-300 mb-3 p-2 px-3 rounded-md text-sm sm:text-base"
               onClick={() => {
                 const notesArea = document.getElementById("notesArea");
                 if (!notesArea || !notesArea.value.trim()) {

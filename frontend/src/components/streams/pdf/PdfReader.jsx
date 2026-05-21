@@ -59,13 +59,13 @@ const PDFViewer = ( ) => {
 
 
     return (
-        <><div className="flex  flex-col items-center justify-center w-full h-full px-4 rounded-lg">
+        <><div className="flex  flex-col items-center justify-center w-full h-full px-2 sm:px-4 rounded-lg">
               <div className="w-full m-3  justify-end flex">
-                        <Link className=" btn" to={"/stream"}><MoveLeft /> </Link>
+                        <Link className=" btn btn-sm sm:btn-md" to={"/stream"}><MoveLeft /> </Link>
                       </div>
             <div
                 ref={pdfRef}
-                className="h-[500px] mx-auto overflow-y-scroll w-[900px] flex flex-col items-center"
+                className="h-[500px] mx-auto overflow-y-scroll w-full sm:w-[900px] flex flex-col items-center px-2 sm:px-0"
             >
                 <div className="w-full p-2" style={{ filter: `brightness(${brightness}%)` }}>
                     <Document
@@ -90,10 +90,10 @@ const PDFViewer = ( ) => {
                     </Document>
                 </div>
             </div>
-            <div className="flex justify-between w-full px-11 items-center mt-4">
+            <div className="flex flex-wrap justify-between w-full px-4 sm:px-8 lg:px-11 items-center mt-4 gap-2 sm:gap-4">
                 {streamData?.senderInfo?.fullName !== authUser?.fullName && (
                     <button
-                        className="bg-base-content text-base-300 p-2 px-3 rounded-md"
+                        className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
                         onClick={async () => {
                             await axiosInstance.get(
                                 `/auth/user/stream-control/${selectedUser._id}/999999/${streamData._id}`
@@ -105,7 +105,7 @@ const PDFViewer = ( ) => {
                 )}
                 {streamData?.senderInfo?.fullName === authUser?.fullName && (
                     <Link
-                        className="bg-base-content text-base-300 p-2 px-3 rounded-md"
+                        className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
                         onClick={() => {
                             setStartStreaming(false);
                             // setStreamData([]);
@@ -119,6 +119,7 @@ const PDFViewer = ( ) => {
                     </Link>
                 )}
                 <button
+                    className="p-2"
                     onClick={() => {
                         fetch(streamData?.streamInfo?.url)
                             .then((response) => response.blob())
@@ -135,7 +136,7 @@ const PDFViewer = ( ) => {
                     <Download />
                 </button>
                 <div className="flex items-center gap-2">
-                    <Sun />
+                    <Sun className="size-4 sm:size-5" />
                     <input
                         type="range"
                         value={brightness}
@@ -175,7 +176,7 @@ const PDFViewer = ( ) => {
                     min={10}
                     max={50}
                     defaultValue={16}
-                    className="bg-base-content  text-base-100"
+                    className="bg-base-content  text-base-100 text-sm"
                     onChange={(e) => {
                         document.documentElement.style.setProperty(
                             "--note-text-size",
@@ -185,7 +186,7 @@ const PDFViewer = ( ) => {
                     }} />
             </div>
         </div>
-            <div className="mt-11  flex flex-col gap-6 justify-center items-center my-5">
+            <div className="mt-11  flex flex-col gap-6 justify-center items-center my-5 w-full px-2 sm:px-0">
                 <textarea
                     id="notesArea"
                     name="notes"
@@ -199,10 +200,10 @@ const PDFViewer = ( ) => {
                     placeholder="Notes"
                     value={notes}
                     onChange={(e) => { setNotes(e.target.value);   }}
-                    className="w-[57vw] rounded-md p-5 text-base-300  text-4xl max-h-full h-[20vh]"
+                    className="w-full max-w-2xl rounded-md p-5 text-base-300  text-2xl sm:text-4xl max-h-full h-[20vh]"
                 ></textarea>
                 <button
-                    className="bg-base-content userselect  text-base-300 mb-3 p-2 px-3 rounded-md"
+                    className="bg-base-content userselect  text-base-300 mb-3 p-2 px-3 rounded-md text-sm sm:text-base"
                     onClick={() => {
                         const notesArea = document.getElementById("notesArea");
                         if (!notesArea || !notesArea.value.trim()) {

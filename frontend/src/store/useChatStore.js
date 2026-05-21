@@ -132,7 +132,7 @@ export const useChatStore = create((set, get) => ({
       if (selectedUser.fullName !== undefined) {
 
         const streamData = useStreamStore.getState().streamData
-        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, data: streamData?.streamInfo?.data?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
+        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, streamId: streamData?._id, data: streamData?.streamInfo?.data?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
       }
       else
         res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, receiverId: null, groupId: selectedUser._id });

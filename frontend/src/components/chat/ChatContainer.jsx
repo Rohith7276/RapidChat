@@ -1,6 +1,7 @@
 import { useChatStore } from "../../store/useChatStore.js";
 import { useStreamStore } from "../../store/useStreamStore.js"
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { BotMessageSquare, BrainCircuit, ChevronDown, MoveDown, MoveDownIcon, Phone, PhoneOff } from 'lucide-react';
 import ChatHeader from "./ChatHeader.jsx";
 import { useInView } from "react-intersection-observer";
@@ -11,7 +12,9 @@ import { useAuthStore } from "../../store/useAuthStore.js";
 import { formatMessageTime } from "../../lib/utils.js";
 import { X, TvMinimalPlay } from "lucide-react";
 import VideoStream from "../videoCall/VideoStream.jsx";
+import { parseTimestampToSeconds } from "../../lib/utils.js";
 const chatContainer = () => {
+  const navigate = useNavigate();
   const {
     messages,
     getMessages,
@@ -31,7 +34,8 @@ const chatContainer = () => {
     setStreamMode,
     streamMode,
     setStreamData,
-    streamData
+    streamData,
+    setPdfScrollTop,
   } = useStreamStore();
   const childRef = useRef(null)
   const prevScrollHeight = useRef(0)
@@ -46,6 +50,33 @@ const chatContainer = () => {
   const [message, setMessage] = useState([])
   const [imageViewSrc, setImageViewSrc] = useState("")
   const size = useRef(null)
+
+  const handleTimestampSeek = (timestamp) => {
+    const seconds = parseTimestampToSeconds(timestamp);
+    if (seconds == null) {
+      return;
+    }
+
+    setPdfScrollTop(seconds);
+
+    if (streamData?.streamInfo?.type === "youtube" && !window.location.pathname.includes("/stream/youtube-player")) {
+      navigate("/stream/youtube-player");
+    }
+  };
+
+  const renderMessageHtml = (text) => {
+    const timestampPattern = /(?<!\d)(?:(\d{1,2}):)?([0-5]?\d):([0-5]\d)(?!\d)/g;
+
+    return String(text || "")
+      .replace(/^###\s/gm, "<h3>")
+      .replace(/^>\s?/gm, "<blockquote>")
+      .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+      .replace(/\*(.*?)\*/g, "<i>$1</i>")
+      .replace(/---/g, "<hr>")
+      .replace("@rapid", "<b>@rapid</b>")
+      .replace(timestampPattern, (match) => `<button type="button" data-timestamp-seek="${match}" class="mx-1 inline-flex items-center rounded-full  px-1 py-0.5 text-base font-bold  underline decoration-dotted decoration-secondary/60 hover:bg-primary/20">${match}</button>`)
+      .replace(/\n/g, "<br/>");
+  };
 
   const scrollToBottom = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -261,7 +292,14 @@ const chatContainer = () => {
                         {message.type == 'ai' ? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
                       </time>
                     </div>}
-                  <div className={`chat-bubble  flex flex-col ${message.senderId === authUser._id && message.type != "ai" ? "chat-end bg-primary text-primary-content" : "chat-start  text-base-content  bg-base-200 "}`}>
+                  <div className={`chat-bubble  flex flex-col ${message.senderId === authUser._id && message.type != "ai" ? "chat-end bg-primary text-primary-content" : "chat-start  text-base-content  bg-base-200 "}`} onClick={(event) => {
+                    const target = event.target.closest("[data-timestamp-seek]");
+                    if (!target) {
+                      return;
+                    }
+
+                    handleTimestampSeek(target.getAttribute("data-timestamp-seek"));
+                  }}>
                     {message.image && (
                       <img loading="blur"
                         onClick={(e) => handleImageView(e)}
@@ -270,15 +308,17 @@ const chatContainer = () => {
                         className="sm:max-w-[200px] hover:cursor-pointer rounded-md mb-2"
                       />
                     )}
+                    {message.aiMetadata?.retrievalMode === "timestamp" && message.aiMetadata?.timestamp && (
+                      <button
+                        type="button"
+                        onClick={() => handleTimestampSeek(message.aiMetadata.timestamp)}
+                        className="mb-2 inline-flex w-fit items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
+                      >
+                        Jump to {message.aiMetadata.timestamp}
+                      </button>
+                    )}
                     {message.text && <p className="w-full text-clip overflow-clip" dangerouslySetInnerHTML={{
-                      __html: message.text
-                        .replace(/^###\s/gm, "<h3>") // headings
-                        .replace(/^>\s?/gm, "<blockquote>")
-                        .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
-                        .replace(/\*(.*?)\*/g, "<i>$1</i>")
-                        .replace(/---/g, "<hr>")
-                        .replace("@rapid", "<b>@rapid</b>")
-                        .replace(/\n/g, "<br/>"),
+                      __html: renderMessageHtml(message.text),
                     }}></p>}
                   </div>
                 </div>}

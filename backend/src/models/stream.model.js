@@ -37,6 +37,14 @@ const streamSchema = new mongoose.Schema(
             data: {
                 type: String, 
             },
+            transcriptSegments: {
+                type: Array,
+                default: [],
+            },
+            transcriptChunks: {
+                type: Array,
+                default: [],
+            },
             type: {
                 type: String, 
                 enum: ["youtube", "pdf", "website"], 

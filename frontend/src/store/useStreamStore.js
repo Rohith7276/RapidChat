@@ -17,6 +17,7 @@ export const useStreamStore = create((set, get) => ({
 
   setStreamYoutube: (boolval) => set({ streamYoutube: boolval }),
   setPdfScroll: (scroll) => set({ pdfScroll: scroll }),
+  setPdfScrollTop: (scroll) => set({ pdfScrollTop: scroll }),
 
   checkAndLoadUrl: async (url) => {
     const res = await axiosInstance.get(`/stream/check-url/?url=${url}`);

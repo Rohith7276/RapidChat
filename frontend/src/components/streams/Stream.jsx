@@ -79,7 +79,7 @@ const stream = () => {
             </div>
 
             <h1 className="text-xl font-semibold my-8 ">Select a source to stream</h1>
-            <div className="flex flex-wrap justify-center py-6 px-11 items-center gap-11 ">
+            <div className="flex flex-wrap justify-center py-6 px-4 sm:px-8 items-center gap-4 sm:gap-8">
                   <button
                     onClick={() => {
 
@@ -91,11 +91,11 @@ const stream = () => {
                             navigate("/stream/create-youtube-stream")
                         }
                     }}
-                    className={`${streamData?.streamInfo?.type == "youtube" ? "border-2 border-white " : ""} px-4 py-4 h-[12rem] flex-col justify-center items-center text-3xl w-[12rem] flex gap-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition`}
+                    className={`${streamData?.streamInfo?.type == "youtube" ? "border-2 border-white " : ""} px-3 sm:px-4 py-3 sm:py-4 h-28 sm:h-48 flex-col justify-center items-center text-2xl sm:text-3xl w-24 sm:w-48 flex gap-3 sm:gap-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition`}
                 >
-                    {streamData?.streamInfo?.type == "youtube" && <div className="text-red-600 bg-white px-2 pb-1 rounded-md  font-bold text-lg">Streaming now!</div>}
+                    {streamData?.streamInfo?.type == "youtube" && <div className="text-red-600 bg-white px-2 pb-1 rounded-md  font-bold text-xs sm:text-lg">Streaming now!</div>}
 
-                    <Youtube className="size-[3rem]" />
+                    <Youtube className="size-6 sm:size-12" />
 
                     YouTube
                 </button>  
@@ -108,10 +108,10 @@ const stream = () => {
                             navigate("/stream/file")
                         }
                     }}
-                    className={`${streamData?.streamInfo?.type == "pdf" ? "border-2 border-white " : ""} px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[12rem] w-[12rem] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition`}
+                    className={`${streamData?.streamInfo?.type == "pdf" ? "border-2 border-white " : ""} px-3 sm:px-4 py-3 sm:py-2 flex-col items-center justify-center text-2xl sm:text-3xl flex gap-3 sm:gap-4 h-28 sm:h-48 w-24 sm:w-48 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition`}
                 >
-                    {streamData?.streamInfo?.type == "pdf" && <div className="text-red-600 bg-white px-2 pb-1 rounded-md  font-bold text-lg">Streaming now!</div>}
-                    <Book className="size-[3rem]" /> PDF
+                    {streamData?.streamInfo?.type == "pdf" && <div className="text-red-600 bg-white px-2 pb-1 rounded-md  font-bold text-xs sm:text-lg">Streaming now!</div>}
+                    <Book className="size-6 sm:size-12" /> PDF
                 </button>
                 <button
                     onClick={() => { 
@@ -119,26 +119,26 @@ const stream = () => {
                          
                       
                     }}
-                    className={`${streamData?.streamInfo?.type == "pdf" ? "border-2 border-white " : ""} px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[12rem] w-[12rem] bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition`}
+                    className={`${streamData?.streamInfo?.type == "pdf" ? "border-2 border-white " : ""} px-3 sm:px-4 py-3 sm:py-2 flex-col items-center justify-center text-2xl sm:text-3xl flex gap-3 sm:gap-4 h-28 sm:h-48 w-24 sm:w-48 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition`}
                 >
-                    {streamData?.streamInfo?.type == "pdf" && <div className="text-red-600 bg-slate-800 px-2 pb-1 rounded-md  font-bold text-lg">Streaming now!</div>}
-                    <Medal className="size-[3rem]" /> QUIZ
+                    {streamData?.streamInfo?.type == "pdf" && <div className="text-red-600 bg-slate-800 px-2 pb-1 rounded-md  font-bold text-xs sm:text-lg">Streaming now!</div>}
+                    <Medal className="size-6 sm:size-12" /> QUIZ
                 </button>
               <button
                     onClick={() => {
                         navigate("/stream/website")
                     }}
-                    className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[12rem] w-[12rem] bg-green-500 text-white rounded-lg hover:bg-green-700 transition"
+                    className="px-3 sm:px-4 py-3 sm:py-2 flex-col items-center justify-center text-2xl sm:text-3xl flex gap-3 sm:gap-4 h-28 sm:h-48 w-24 sm:w-48 bg-green-500 text-white rounded-lg hover:bg-green-700 transition"
                 >
-                    <Globe className="size-[3rem]" /> Website
+                    <Globe className="size-6 sm:size-12" /> Website
                 </button>
                 <button
                     onClick={() => {
                         navigate("/stream/screen-share")
                     }}
-                    className="px-4 py-2 flex-col items-center justify-center text-3xl flex gap-4 h-[12rem] w-[12rem] bg-[#ededed] text-black rounded-lg hover:bg-gray-200 transition"
+                    className="px-3 sm:px-4 py-3 sm:py-2 flex-col items-center justify-center text-2xl sm:text-3xl flex gap-3 sm:gap-4 h-28 sm:h-48 w-24 sm:w-48 bg-[#ededed] text-black rounded-lg hover:bg-gray-200 transition"
                 >
-                    <ScreenShareIcon className="size-[3rem]" /> Screen share
+                    <ScreenShareIcon className="size-6 sm:size-12" /> Screen share
                 </button>  
             </div>
         </div>
