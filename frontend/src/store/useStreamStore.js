@@ -10,9 +10,10 @@ export const useStreamStore = create((set, get) => ({
   streamData: [],
   streamSet: false,
   streamYoutube: false,
+  streamLoading: false,
   pdfScroll: 0,
-  pdfCheck: false,
   pdfScrollTop: 0,
+  pdfCheck: false,
   startStreaming: false,
 
   setStreamYoutube: (boolval) => set({ streamYoutube: boolval }),
@@ -100,6 +101,7 @@ export const useStreamStore = create((set, get) => ({
   },
 
   getStream: async () => {
+    set({ streamLoading: true });
     try {
       const selectedUser = useChatStore.getState().selectedUser;
 
@@ -115,6 +117,9 @@ export const useStreamStore = create((set, get) => ({
       set({ streamData: [] })
 
     }
+    finally {
+      set({ streamLoading: false });
+    }
   },
 
   streamStart: async () => {
@@ -122,12 +127,16 @@ export const useStreamStore = create((set, get) => ({
   },
 
   endStream: async () => {
-    try {
+    try { 
       const selectedUser = useChatStore.getState().selectedUser;
+      const data = get().streamData 
+      if(data.length == 0) return; 
+      set({streamMode: false})
       await axiosInstance.get(`/stream/end-stream/${selectedUser._id}`)
       set({ streamData: [], streamSet: false, startStreaming: false })
       toast.success("Stream ended successfully");
     } catch (error) {
+      console.log("stream end error", error)
       toast.error("Couldn't end the stream");
     }
   },

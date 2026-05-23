@@ -8,11 +8,7 @@ const stream = () => {
     const navigate = useNavigate()
     const [History, setHistory] = useState(false)
     const { setStreamMode, setStartStreaming, getSpecificStream, setStreamYoutube, streamData, streamHistory, getStream } = useStreamStore();
-   useEffect(() => {
-     console.log(streamData)
    
-      
-   }, [])
    
     function getYouTubeId(url) {
         try {

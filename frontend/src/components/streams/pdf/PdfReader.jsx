@@ -109,8 +109,7 @@ const PDFViewer = ( ) => {
                         onClick={() => {
                             setStartStreaming(false);
                             // setStreamData([]);
-                            endStream();
-      toast.success("Stream ended successfully");
+                            endStream(); 
 
                         }}
                         to='/stream'

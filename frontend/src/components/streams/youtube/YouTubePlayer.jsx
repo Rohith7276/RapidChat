@@ -194,13 +194,13 @@ const YouTubePlayer = () => {
       >
         { !isFloating?  <PictureInPicture/> : <PictureInPicture2Icon/> }
       </button>
+      {console.log(streamData, authUser.fullName)}
             {streamData?.senderInfo?.fullName === authUser?.fullName && (
               <button
                 className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
                 onClick={() => {
                   // setStreamData([]);
-                  endStream(); 
-                        toast.success("Stream ended successfully");
+                  endStream();  
 
                   getStream();
                   navigate("/stream")

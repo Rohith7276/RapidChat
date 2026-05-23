@@ -90,7 +90,7 @@ const [disable, setDisable] = useState(false)
   };
 
   if(!streamData?.streamInfo?.quizData && !quizApproved){
-    console.log(streamData.streamInfo.quizData)
+    console.log(streamData?.streamInfo?.quizData)
     return <h2 className="text-xl text-center   font-bold mb-4">
       <div className="w-full p-8 justify-end flex">
         <Link to={"/stream"}   className="btn" ><MoveLeft /> </Link>

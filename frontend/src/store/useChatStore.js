@@ -179,16 +179,7 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  endStream: async () => {
-    try {
-      const { selectedUser } = get();
-      const res = await axiosInstance.get(`/auth/user/end-stream/${selectedUser._id}`)
-      toast.success("Stream ended successfully");
-    } catch (error) {
-      toast.error("Couldn't end the stream");
-
-    }
-  },
+ 
 
 
   subscribeToMessages: () => {

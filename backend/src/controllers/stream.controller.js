@@ -137,6 +137,7 @@ export const createStream = async (req, res) => {
 
 
         let quizData = null;
+        console.log(type)
         if (type == "youtube" || type == "pdf") {
             quizData = await getResponse(
                 `Give me only valid JSON, without any Markdown fences (no \`\`\`),no spaces, no comments, no trailing commas, no explanations. The JSON must be directly usable with JSON.parse of 10 number of questions for a quiz in format of:
