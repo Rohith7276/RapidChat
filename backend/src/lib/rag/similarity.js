@@ -1,8 +1,19 @@
-import { buildTimestampedContext, buildTimestampedContextFromSegments, chunkTranscriptSegments, normalizeTranscriptSegments, selectTranscriptSegmentsAroundTimestamp } from "./transcript.js";
+import { buildTimestampedContext, buildTimestampedContextFromSegments, chunkTranscriptSegments, normalizeTranscriptSegments } from "./transcript.js";
 import { createEmbedding, createEmbeddings } from "./embeddingService.js";
 import { extractTimestampQuery, formatSecondsToTimestamp } from "./timestamp.js";
 import { deleteStreamKnowledgeBase, getStreamKnowledgeBase, saveStreamKnowledgeBase } from "./store.js";
 import { chunkText } from "./chunkText.js";
+
+const REBASE_OFFSET_THRESHOLD_SECONDS = Number(process.env.RAG_REBASE_OFFSET_THRESHOLD_SECONDS || 180);
+
+function hasLikelyLeadingOffset(segments = []) {
+    const earliestStart = (Array.isArray(segments) ? segments : [])
+        .map((segment) => Number(segment?.start))
+        .filter((start) => Number.isFinite(start) && start >= 0)
+        .reduce((minStart, start) => Math.min(minStart, start), Number.POSITIVE_INFINITY);
+
+    return Number.isFinite(earliestStart) && earliestStart >= REBASE_OFFSET_THRESHOLD_SECONDS;
+}
 
 export function cosineSimilarity(leftVector, rightVector) {
     // Cosine similarity measures how closely two vectors point in the same direction.
@@ -28,10 +39,12 @@ export function cosineSimilarity(leftVector, rightVector) {
 }
 
 export async function indexStreamKnowledgeBase({ streamId, text, transcriptSegments = [], chunks: providedChunks = [], metadata = {} }) {
+    const normalizedTranscriptSegments = normalizeTranscriptSegments(transcriptSegments);
+
     const normalizedChunks = Array.isArray(providedChunks) && providedChunks.length
         ? providedChunks
         : chunkTranscriptSegments(
-            transcriptSegments.length ? transcriptSegments : normalizeTranscriptSegments(text ? { content: text } : null)
+            normalizedTranscriptSegments.length ? normalizedTranscriptSegments : normalizeTranscriptSegments(text ? { content: text } : null)
         );
 
     const fallbackChunks = !normalizedChunks.length && text
@@ -59,10 +72,96 @@ export async function indexStreamKnowledgeBase({ streamId, text, transcriptSegme
     return saveStreamKnowledgeBase(streamId, {
         metadata,
         chunks: indexedChunks,
-        transcriptSegments: transcriptSegments.length ? transcriptSegments : normalizedChunks.flatMap((chunk) => chunk.segments || []),
+        transcriptSegments: normalizedTranscriptSegments.length ? normalizedTranscriptSegments : normalizedChunks.flatMap((chunk) => chunk.segments || []),
         sourceTextLength: String(text || "").length,
         chunkSize: indexedChunks[0]?.wordCount || 0,
     });
+}
+
+function normalizeTimestampSegments(transcriptSegments = []) {
+    const readSegmentNumber = (segment, keys = []) => {
+        for (const key of keys) {
+            const rawValue = segment?.[key];
+            if (rawValue === undefined || rawValue === null || rawValue === "") {
+                continue;
+            }
+
+            const numericValue = Number(rawValue);
+            if (Number.isFinite(numericValue)) {
+                return numericValue;
+            }
+        }
+
+        return null;
+    };
+
+    return (Array.isArray(transcriptSegments) ? transcriptSegments : [])
+        .filter((segment) => segment && segment.text)
+        .map((segment, index) => {
+            const start = readSegmentNumber(segment, ["start", "offset", "from", "begin", "startTime", "startSeconds", "start_time"]);
+            const end = readSegmentNumber(segment, ["end", "to", "finish", "endTime", "endSeconds", "end_time"]);
+            const duration = readSegmentNumber(segment, ["duration", "length", "span"]);
+            const normalizedStart = start ?? 0;
+            const normalizedEnd = end ?? ((start ?? 0) + (duration ?? 0));
+
+            return {
+                ...segment,
+                index: Number.isFinite(segment.index) ? segment.index : index,
+                start: normalizedStart,
+                end: normalizedEnd,
+            };
+        })
+        .sort((leftSegment, rightSegment) => leftSegment.start - rightSegment.start);
+}
+
+function buildTimestampMetadataContext(transcriptSegments, seconds, options = {}) {
+    const targetSeconds = Number(seconds);
+    if (Number.isNaN(targetSeconds)) {
+        return { segments: [], context: "" };
+    }
+
+    const normalizedSegments = normalizeTimestampSegments(transcriptSegments);
+    if (!normalizedSegments.length) {
+        return { segments: [], context: "" };
+    }
+
+    const neighborCount = Math.max(0, Number(options.neighborCount ?? 1));
+    const exactIndex = normalizedSegments.findIndex((segment) => segment.start <= targetSeconds && segment.end >= targetSeconds);
+
+    const matchedIndex = exactIndex >= 0
+        ? exactIndex
+        : normalizedSegments.reduce((bestIndex, segment, index) => {
+            const bestSegment = normalizedSegments[bestIndex];
+            const currentDistance = Math.min(Math.abs(segment.start - targetSeconds), Math.abs(segment.end - targetSeconds));
+            const bestDistance = Math.min(Math.abs(bestSegment.start - targetSeconds), Math.abs(bestSegment.end - targetSeconds));
+
+            return currentDistance < bestDistance ? index : bestIndex;
+        }, 0);
+
+    const windowStartIndex = Math.max(0, matchedIndex - neighborCount);
+    const windowEndIndex = Math.min(normalizedSegments.length, matchedIndex + neighborCount + 1);
+    const selectedSegments = normalizedSegments.slice(windowStartIndex, windowEndIndex);
+
+    if (!selectedSegments.length) {
+        return { segments: [], context: "" };
+    }
+
+    const matchedSegment = normalizedSegments[matchedIndex];
+    const windowStart = selectedSegments[0].start ?? 0;
+    const windowEnd = selectedSegments[selectedSegments.length - 1].end ?? windowStart;
+
+    return {
+        segments: selectedSegments,
+        context: [
+            `Requested timestamp metadata window: [${formatSecondsToTimestamp(windowStart)} - ${formatSecondsToTimestamp(windowEnd)}]`,
+            buildTimestampedContextFromSegments(selectedSegments),
+        ].join("\n\n"),
+        matchedTimestamp: matchedSegment?.start ?? selectedSegments[0]?.start ?? null,
+        matchedSeconds: matchedSegment?.start ?? selectedSegments[0]?.start ?? null,
+        windowStart,
+        windowEnd,
+        retrievalSource: "metadata",
+    };
 }
 
 export async function retrieveRelevantChunks({ streamId, question, topK = 4 }) {
@@ -96,7 +195,33 @@ export function retrieveChunksByTimestamp({ streamId, seconds, topK = 3 }) {
         return [];
     }
 
-    const exactMatches = knowledgeBase.chunks.filter((chunk) => {
+    const timedChunks = knowledgeBase.chunks
+        .map((chunk) => {
+            const hasStart = chunk?.start !== undefined && chunk?.start !== null && chunk?.start !== "";
+            const hasEnd = chunk?.end !== undefined && chunk?.end !== null && chunk?.end !== "";
+            const parsedStart = hasStart ? Number(chunk.start) : Number.NaN;
+            const parsedEnd = hasEnd ? Number(chunk.end) : Number.NaN;
+
+            if (!Number.isFinite(parsedStart) && !Number.isFinite(parsedEnd)) {
+                return null;
+            }
+
+            const normalizedStart = Number.isFinite(parsedStart) ? parsedStart : parsedEnd;
+            const normalizedEnd = Number.isFinite(parsedEnd) ? parsedEnd : normalizedStart;
+
+            return {
+                ...chunk,
+                start: normalizedStart,
+                end: normalizedEnd,
+            };
+        })
+        .filter(Boolean);
+
+    if (!timedChunks.length) {
+        return [];
+    }
+
+    const exactMatches = timedChunks.filter((chunk) => {
         const chunkStart = Number(chunk.start ?? 0);
         const chunkEnd = Number(chunk.end ?? chunkStart);
         return chunkStart <= targetSeconds && chunkEnd >= targetSeconds;
@@ -106,7 +231,7 @@ export function retrieveChunksByTimestamp({ streamId, seconds, topK = 3 }) {
         return exactMatches.slice(0, Math.max(1, Number(topK || 1)));
     }
 
-    return knowledgeBase.chunks
+    return timedChunks
         .map((chunk) => ({
             ...chunk,
             distance: Math.min(
@@ -126,39 +251,76 @@ export function retrieveTimestampContext({ streamId, seconds }) {
     }
 
     const transcriptSegments = Array.isArray(knowledgeBase.transcriptSegments) ? knowledgeBase.transcriptSegments : [];
-    const selectedSegments = selectTranscriptSegmentsAroundTimestamp(transcriptSegments, seconds, {
-        maxWindowSeconds: 600,
+    const metadataContext = buildTimestampMetadataContext(transcriptSegments, seconds, {
+        neighborCount: 1,
     });
 
-    if (selectedSegments.length) {
-        const windowStart = Math.max(0, Number(seconds) - 300);
-        const windowEnd = Number(seconds) + 300;
-        return {
-            segments: selectedSegments,
-            context: [`Requested timestamp window: [${formatSecondsToTimestamp(windowStart)} - ${formatSecondsToTimestamp(windowEnd)}]`, buildTimestampedContextFromSegments(selectedSegments)].join("\n\n"),
-            matchedTimestamp: selectedSegments.find((segment) => segment.start <= seconds && segment.end >= seconds)?.start ?? selectedSegments[0]?.start ?? null,
-            matchedSeconds: selectedSegments.find((segment) => segment.start <= seconds && segment.end >= seconds)?.start ?? selectedSegments[0]?.start ?? null,
-            windowStart,
-            windowEnd,
-        };
+    if (metadataContext.segments.length) {
+        return metadataContext;
     }
 
     const chunks = retrieveChunksByTimestamp({ streamId, seconds, topK: 3 });
+    if (!chunks.length) {
+        return {
+            segments: [],
+            chunks: [],
+            context: "",
+            matchedTimestamp: null,
+            matchedSeconds: null,
+            retrievalSource: "unavailable",
+        };
+    }
+
     const windowStart = Math.max(0, Number(seconds) - 300);
     const windowEnd = Number(seconds) + 300;
     return {
         segments: [],
         chunks,
-        context: [`Requested timestamp window: [${formatSecondsToTimestamp(windowStart)} - ${formatSecondsToTimestamp(windowEnd)}]`, buildTimestampedContext(chunks)].join("\n\n"),
+        context: [`Requested timestamp chunk window: [${formatSecondsToTimestamp(windowStart)} - ${formatSecondsToTimestamp(windowEnd)}]`, buildTimestampedContext(chunks)].join("\n\n"),
         matchedTimestamp: chunks[0]?.start ?? null,
         matchedSeconds: chunks[0]?.start ?? null,
         windowStart,
         windowEnd,
+        retrievalSource: "chunk",
     };
 }
 
-export async function getStreamContextForQuestion({ streamId, question, topK = 4, textFallback = "", transcriptChunksFallback = [] }) {
+export async function getStreamContextForQuestion({ streamId, question, topK = 4, textFallback = "", transcriptChunksFallback = [], transcriptSegmentsFallback = [] }) {
     let knowledgeBase = getStreamKnowledgeBase(streamId);
+
+    if (knowledgeBase?.chunks?.length && hasLikelyLeadingOffset(knowledgeBase?.transcriptSegments || [])) {
+        knowledgeBase = await indexStreamKnowledgeBase({
+            streamId,
+            text: textFallback,
+            transcriptSegments: transcriptSegmentsFallback.length ? transcriptSegmentsFallback : knowledgeBase.transcriptSegments,
+            chunks: transcriptChunksFallback.length ? transcriptChunksFallback : knowledgeBase.chunks,
+            metadata: {
+                ...(knowledgeBase.metadata || {}),
+                source: "rehydrated-rebased-transcript-segments",
+            },
+        });
+    }
+
+    if (knowledgeBase?.chunks?.length && (!knowledgeBase?.transcriptSegments?.length) && transcriptSegmentsFallback.length) {
+        knowledgeBase = await indexStreamKnowledgeBase({
+            streamId,
+            text: textFallback,
+            transcriptSegments: transcriptSegmentsFallback,
+            chunks: transcriptChunksFallback,
+            metadata: {
+                ...(knowledgeBase.metadata || {}),
+                source: "rehydrated-with-transcript-segments",
+            },
+        });
+    }
+
+    if (!knowledgeBase?.chunks?.length && transcriptSegmentsFallback.length) {
+        knowledgeBase = await indexStreamKnowledgeBase({
+            streamId,
+            transcriptSegments: transcriptSegmentsFallback,
+            metadata: { source: "persisted-transcript-segments" },
+        });
+    }
 
     if (!knowledgeBase?.chunks?.length && transcriptChunksFallback.length) {
         knowledgeBase = await indexStreamKnowledgeBase({
@@ -187,9 +349,25 @@ export async function getStreamContextForQuestion({ streamId, question, topK = 4
 
     if (timestampQuery) {
         const timestampContext = retrieveTimestampContext({ streamId, seconds: timestampQuery.seconds });
+
+        if (!timestampContext.context) {
+            return {
+                streamId,
+                retrievalMode: "timestamp",
+                retrievalSource: "unavailable",
+                timestamp: timestampQuery.timestamp,
+                seconds: timestampQuery.seconds,
+                chunks: [],
+                context: "",
+                matchedTimestamp: null,
+                matchedSeconds: null,
+            };
+        }
+
         return {
             streamId,
             retrievalMode: "timestamp",
+            retrievalSource: timestampContext.retrievalSource || "metadata",
             timestamp: timestampQuery.timestamp,
             seconds: timestampQuery.seconds,
             chunks: timestampContext.segments.length ? timestampContext.segments : timestampContext.chunks || [],

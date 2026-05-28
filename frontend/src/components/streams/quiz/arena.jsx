@@ -5,6 +5,34 @@ import { MoveLeft } from 'lucide-react';
 import { axiosInstance } from "../../../lib/axios";
 import { useChatStore } from "../../../store/useChatStore";
 import { useAuthStore } from "../../../store/useAuthStore";
+import { jsonrepair } from "jsonrepair";
+
+const parseStreamJson = (value) => {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+
+  try {
+    const normalizedValue = String(value)
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .replace(/,\s*([}\]])/g, "$1");
+
+    const startIndex = normalizedValue.search(/[\[{]/);
+    const endIndex = Math.max(normalizedValue.lastIndexOf("}"), normalizedValue.lastIndexOf("]"));
+    const jsonText =
+      startIndex !== -1 && endIndex !== -1 && endIndex > startIndex
+        ? normalizedValue.slice(startIndex, endIndex + 1)
+        : normalizedValue;
+
+    return JSON.parse(jsonrepair(jsonText));
+  } catch (error) {
+    console.log("Failed to parse quiz data", error);
+    return null;
+  }
+};
+
+const normalizeIdentity = (value) => String(value || "").trim().toLowerCase();
 
 const Quiz = () => {
   const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, getStream, endStream,  streamData } = useStreamStore()
@@ -14,36 +42,43 @@ const Quiz = () => {
   const [selected, setSelected] = useState(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [score, setScore] = useState(0);
+  const [finalScore, setFinalScore] = useState(null);
+  const [finalPoints, setFinalPoints] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null)
   const [quizData, setQuizData] = useState(null)
   const [showQuizPrompt, setShowQuizPrompt] = useState(false);
   const [quizApproved, setQuizApproved] = useState(false);
+  const [showRevision, setShowRevision] = useState(false);
+  const [isSavingResult, setIsSavingResult] = useState(false);
 const navigate = useNavigate()
-  const currentQuestion = quizData?.quiz[currentQ];
+  const currentQuestion = quizData?.quiz?.[currentQ];
 const [disable, setDisable] = useState(false)
+
+  const authEmail = normalizeIdentity(authUser?.email);
+  const currentLeaderboardEntry = leaderboard?.find((entry) => {
+    const entryEmail = normalizeIdentity(entry?.email ?? entry?.gmail);
+    const entryUserId = normalizeIdentity(entry?.userId);
+    return entryEmail === authEmail || (!authEmail && entryUserId === normalizeIdentity(authUser?._id));
+  });
+  const displayedScore = finalScore ?? (currentLeaderboardEntry ? Number(currentLeaderboardEntry.points) / 10 : score);
+  const displayedPoints = finalPoints ?? (currentLeaderboardEntry ? Number(currentLeaderboardEntry.points) : score * 10);
 
   // Check if current user is the host of the stream
   const isHost = streamData?.createdBy === authUser?._id || streamData?.createdBy?._id === authUser?._id;
   useEffect(() => {
     console.log(streamData)
-    
-      // console.log(streamData?.streamInfo?.quizData ? JSON?.parse(streamData?.streamInfo?.quizData) : null)
-      
-    
-    try{
-    setQuizData(streamData?.streamInfo?.quizData ? JSON.parse(streamData?.streamInfo?.quizData) : null)
-    if (streamData.streamInfo?.leaderboard){
-      setLeaderboard(JSON.parse(streamData.streamInfo?.leaderboard))
-      console.log(JSON.parse(streamData.streamInfo?.leaderboard))
-    }
+
+    const parsedQuizData = parseStreamJson(streamData?.streamInfo?.quizData);
+    const parsedLeaderboard = parseStreamJson(streamData?.streamInfo?.leaderboard);
+
+    setQuizData(parsedQuizData);
+    setLeaderboard(parsedLeaderboard);
+
     // Show quiz prompt if user is host and no quiz data exists yet
-    if (isHost && !streamData?.streamInfo?.quizData && !showQuizPrompt) {
+    if (isHost && !parsedQuizData?.quiz?.length && !showQuizPrompt) {
       setShowQuizPrompt(true);
     }
-  }
-  catch(e){
-    console.log(e)
-  }
+    setShowRevision(false);
   }, [streamData])
 
 
@@ -51,28 +86,36 @@ const [disable, setDisable] = useState(false)
     if (showAnswer) return; // prevent changing after selection
     setSelected(index);
     setShowAnswer(true);
-    if (index === currentQuestion.answer.index) setScore(score + 1);
+    if (index === currentQuestion?.answer?.index) setScore((currentScore) => currentScore + 1);
   };
 
-  const submit = async () => {
-    const x = await axiosInstance.get(
-      `/stream/update-stream/${streamData._id}/${score * 10}`
-    );
-    console.log('updating', x.data)
-    setStreamData(x.data)
-    setLeaderboard(x.data?.streamInfo?.leaderboard ? JSON.parse(x.data?.streamInfo?.leaderboard): null)
-    setTimeout(() => {
-      setCurrentQ(currentQ + 1);
+  const submit = async (submittedScore = score) => {
+    const submittedPoints = submittedScore * 10;
+    setFinalScore(submittedScore);
+    setFinalPoints(submittedPoints);
+    setIsSavingResult(true);
+    try {
+      const x = await axiosInstance.get(
+        `/stream/update-stream/${streamData._id}/${submittedPoints}`
+      );
+      console.log('updating', x.data)
+      setStreamData(x.data)
+      setLeaderboard(parseStreamJson(x.data?.streamInfo?.leaderboard))
       return x;
-    }, 1000);
+    } finally {
+      setTimeout(() => {
+        
+        setIsSavingResult(false);
+      }, 2000);
+    }
   }
 
   const handleNext = async () => {
     setSelected(null);
     setShowAnswer(false);
 
-    if (currentQ >= quizData?.quiz.length - 1) {
-     submit();
+    if (currentQ >= quizData?.quiz?.length - 1) {
+      await submit(score);
     }
     else
       setCurrentQ(currentQ + 1);
@@ -89,6 +132,8 @@ const [disable, setDisable] = useState(false)
     navigate("/stream");
   };
 
+  const hasQuizQuestions = Boolean(quizData?.quiz?.length);
+
   if(!streamData?.streamInfo?.quizData && !quizApproved){
     console.log(streamData?.streamInfo?.quizData)
     return <h2 className="text-xl text-center   font-bold mb-4">
@@ -100,9 +145,11 @@ const [disable, setDisable] = useState(false)
   }
 
   return (
+
     <>
+    {console.log(streamData)}
       <div className="w-full p-8 justify-end flex">
-        <button disabled={disable} onClick={async() => { setDisable(true); if (!streamData?.streamInfo?.leaderboard?.includes(authUser._id.toString())) await submit(); navigate("/stream"); }} className="btn" ><MoveLeft /> </button>
+        <button disabled={disable || isSavingResult} onClick={async() => { setDisable(true); if (!currentLeaderboardEntry) await submit(score); navigate("/stream"); }} className="btn" >{isSavingResult ? <span className="loading loading-spinner loading-sm" /> : <MoveLeft />}</button>
       </div>
 
       {/* Quiz Approval Modal for Host */}
@@ -137,20 +184,28 @@ const [disable, setDisable] = useState(false)
 
       {/* Only show quiz if approved by host (or if user is not host) */}
       {(!isHost || quizApproved) && (
-        <div className="p-6 text-base-content rounded-2xl w-full max-w-2xl m-auto">
-          {!streamData?.streamInfo?.leaderboard?.includes(authUser._id.toString()) ? (
+        <div className="p-6 text-base-content rounded-2xl w-full max-w-2xl m-auto relative">
+          {isSavingResult && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-base-100/80 backdrop-blur-sm">
+              <div className="text-center">
+                <span className="loading loading-spinner loading-lg text-primary" />
+                <p className="mt-3 font-medium">Saving your result...</p>
+              </div>
+            </div>
+          )}
+          {!currentLeaderboardEntry ? (
             <div>
               <h2 className="text-xl font-bold mb-4">
-                Question {currentQ + 1} of {quizData?.quiz.length}
+                Question {currentQ + 1} of {quizData?.quiz?.length}
               </h2>
 
               <p className="font-medium   text-primary mb-4">{currentQuestion?.question}</p>
 
-              {currentQuestion?.options.map((opt, i) => {
+              {currentQuestion?.options?.map((opt, i) => {
                 let bgClass = "bg-base-200 hover:bg-base-300";
                 if (showAnswer) {
-                  if (i === currentQuestion?.answer.index) bgClass = "bg-green-500 text-white";
-                  else if (i === selected && i !== currentQuestion?.answer.index) bgClass = "bg-red-600 text-white";
+                  if (i === currentQuestion?.answer?.index) bgClass = "bg-green-500 text-white";
+                  else if (i === selected && i !== currentQuestion?.answer?.index) bgClass = "bg-red-600 text-white";
                 }
                 return (
                   <button
@@ -165,13 +220,14 @@ const [disable, setDisable] = useState(false)
 
               {showAnswer && (
                 <div className="mt-3 p-3 bg-base-300 rounded">
-                  <strong>Answer:</strong> {currentQuestion.answer.title}
-                  <p>{currentQuestion.answer.description}</p>
+                  <strong>Answer:</strong> {currentQuestion?.answer?.title}
+                  <p>{currentQuestion?.answer?.description}</p>
                 </div>
               )}
 
               {showAnswer && (
                 <button
+                  disabled={isSavingResult}
                   onClick={handleNext}
                   className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary-focus"
                 >
@@ -185,18 +241,60 @@ const [disable, setDisable] = useState(false)
                 <div className="text-center cursor-default">
                   <h2 className="text-2xl font-bold">🎉 Quiz Completed!</h2>
                   <p className="mt-2 text-lg">
-                    Your Score: {score}/{quizData?.quiz.length}
+                    Your Score: {displayedScore}/{quizData?.quiz?.length}
                     <br />
-                    Points: {score * 10}
+                    Points: {displayedPoints}
                   </p>
+
+                  <div className="mt-4 flex justify-center gap-3">
+                    <button
+                      disabled={isSavingResult}
+                      onClick={() => setShowRevision((current) => !current)}
+                      className="btn btn-primary"
+                    >
+                      {showRevision ? "Hide Revision" : "Revise Quiz"}
+                    </button>
+                  </div>
+
+                  {showRevision && (
+                    <div className="mt-6 space-y-4 text-left">
+                      {quizData?.quiz?.map((question, index) => (
+                        <div key={index} className="rounded-xl border border-base-300 bg-base-200 p-4">
+                          <h4 className="font-semibold mb-3">
+                            Question {index + 1}: {question?.question}
+                          </h4>
+
+                          <div className="space-y-2">
+                            {question?.options?.map((option, optionIndex) => {
+                              const isCorrect = optionIndex === question?.answer?.index;
+                              return (
+                                <div
+                                  key={optionIndex}
+                                  className={`rounded-lg px-3 py-2 ${isCorrect ? "bg-green-500 text-white" : "bg-base-100"}`}
+                                >
+                                  {option?.title}
+                                  {isCorrect && <span className="ml-2 font-semibold">Correct answer</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="mt-3 rounded-lg bg-base-100 p-3">
+                            <p className="font-semibold">Answer: {question?.answer?.title}</p>
+                            <p className="mt-1 text-sm opacity-80">{question?.answer?.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Badge */}
                   <div className="mt-3">
-                    {score === quizData?.quiz.length ? (
+                    {displayedScore === quizData?.quiz?.length ? (
                       <p className="text-xl">🏆 Gold Badge</p>
-                    ) : score >= quizData?.quiz.length * 0.7 ? (
+                    ) : displayedScore >= quizData?.quiz?.length * 0.7 ? (
                       <p className="text-xl">🥈 Silver Badge</p>
-                    ) : score >= quizData?.quiz.length * 0.4 ? (
+                    ) : displayedScore >= quizData?.quiz?.length * 0.4 ? (
                       <p className="text-xl">🥉 Bronze Badge</p>
                     ) : (
                       <p className="text-xl">📖 Keep Learning Badge</p>
@@ -230,7 +328,9 @@ const [disable, setDisable] = useState(false)
                 </div>
                 :
                 <h2 className="text-xl text-center   font-bold mb-4">
-                  Please stream a pdf or a youtube video to attend quiz
+                  {streamData?.streamInfo?.quizData && !hasQuizQuestions
+                    ? "Quiz data is present, but it could not be parsed."
+                    : "Please stream a pdf or a youtube video to attend quiz"}
                 </h2>}
             </>
           )}

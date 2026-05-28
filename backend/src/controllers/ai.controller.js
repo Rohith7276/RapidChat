@@ -32,7 +32,7 @@ const saveAiTurn = async ({ conversationKey, text, role, senderId, receiverId, g
 };
 
 const getLatestMemory = async (conversationKey) => {
-  return AiMessage.findOne({ conversationKey, role: "memory" }).sort({ createdAt: -1 });
+  return await AiMessage.findOne({ conversationKey, role: "memory" }).sort({ createdAt: -1 });
 };
 
 const getTurnsSinceMemory = async (conversationKey, memoryCreatedAt) => {
@@ -45,7 +45,7 @@ const getTurnsSinceMemory = async (conversationKey, memoryCreatedAt) => {
     query.createdAt = { $gt: memoryCreatedAt };
   }
 
-  return AiMessage.find(query).sort({ createdAt: 1 });
+  return await AiMessage.find(query).sort({ createdAt: 1 });
 };
 
 const buildCompletionMessages = ({ memorySummary, turns, referenceData }) => {
@@ -290,12 +290,13 @@ export const streamAi = async (req, res) => {
       question: normalizedInput,
       topK: Number(process.env.RAG_TOP_K || 4),
       textFallback: activeStream?.streamInfo?.data || data || "",
+      transcriptSegmentsFallback: activeStream?.streamInfo?.transcriptSegments || [],
       transcriptChunksFallback: activeStream?.streamInfo?.transcriptChunks || [],
     });
 
     const retrievalLabel = streamContext.retrievalMode === "timestamp"
-      ? `The user asked about the timestamp ${streamContext.timestamp}. Use the transcript excerpt that spans that exact time.`
-      : "Use the retrieved transcript excerpts to answer semantically.";
+      ? `The user asked about the moment at ${streamContext.timestamp}. Answer based on what is happening around that moment in the video.`
+      : "Answer using the most relevant context about the video content.";
 
     const retrievedChunksText = streamContext.context || (streamContext.chunks.length
       ? streamContext.chunks
@@ -309,14 +310,16 @@ export const streamAi = async (req, res) => {
       receiverId,
       groupId,
       referenceData: [
-        `You are a user-facing assistant.`,
-        `Answer naturally, clearly, and briefly.`,
-        `Never mention backend details, embeddings, chunks, retrieval, context windows, or system internals.`,
-        `If the user asks about a timestamp, answer from the exact excerpt around that time and mention the timestamp clearly.`,
-        `If the answer is not in the provided excerpt, say that you could not find it in the transcript.`,
+        `You are Rapid AI, a helpful assistant discussing this video with the user.`,
+        `Answer naturally, clearly, and briefly in a conversational tone.`,
+        `Speak as if you understand the video content directly.`,
+        `Do not mention transcript excerpts, backend details, embeddings, chunks, retrieval, context windows, or system internals.`,
+        `If the user asks about a timestamp, explain what is happening around that moment and mention the timestamp clearly.`,
+        `If exact moment coverage is limited, use the nearest relevant moment confidently without exposing retrieval limitations.`,
+        `If information is truly unavailable, say you do not have enough information from this video yet.`,
         `Stream title: ${activeStream?.streamInfo?.title || "Untitled stream"}`,
         retrievalLabel,
-        `Transcript excerpts:\n${retrievedChunksText}`,
+        `Video context:\n${retrievedChunksText}`,
       ].join("\n\n"),
     });
 
@@ -353,6 +356,7 @@ export const streamAi = async (req, res) => {
       timestampSeconds: streamContext.retrievalMode === "timestamp" ? (streamContext.seconds ?? null) : null,
       aiMetadata: {
         retrievalMode: streamContext.retrievalMode || "semantic",
+      retrievalSource: streamContext.retrievalSource || null,
         timestamp: streamContext.retrievalMode === "timestamp" ? (streamContext.timestamp || null) : null,
         timestampSeconds: streamContext.retrievalMode === "timestamp" ? (streamContext.seconds ?? null) : null,
         matchedTimestamp: streamContext.matchedTimestamp || null,

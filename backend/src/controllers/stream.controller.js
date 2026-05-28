@@ -140,62 +140,39 @@ export const createStream = async (req, res) => {
         console.log(type)
         if (type == "youtube" || type == "pdf") {
             quizData = await getResponse(
-                `Give me only valid JSON, without any Markdown fences (no \`\`\`),no spaces, no comments, no trailing commas, no explanations. The JSON must be directly usable with JSON.parse of 10 number of questions for a quiz in format of:
+                `
+Return ONLY valid JSON.
+
+Generate 10 MCQ quiz questions from this content.
+
+Format:
 {
-	"quiz":[
-		{
-			"question": "first question", 
-			"options": [
-				{
-					"title": "title", 
-				},
-				{
-					"title": "title", 
-				},
-				{
-					"title": "title", 
-				},
-				{
-					"title": "title", 
-				}
-			],
-			"answer":{
-				index: optionIndex,
-				title: "title",
-				description: "explanation"
-			}
-		},
-		{
-			"question": "second question", 
-			"options": [
-				{
-					"title": "title", 
-				},
-				{
-					"title": "title", 
-				},
-				{
-					"title": "title", 
-				},
-				{
-					"title": "title", 
-				}
-			],
-			"answer":{
-				index: optionIndex,
-				title: "title",
-				description: "explanation"
-			}
-			
-		}
-	]
+  "quiz":[
+    {
+      "question":"...",
+      "options":[
+        {"title":"..."},
+        {"title":"..."},
+        {"title":"..."},
+        {"title":"..."}
+      ],
+      "answer":{
+        "index":0,
+        "title":"...",
+        "description":"..."
+      }
+    }
+  ]
 }
 
-regarding the information data : ${data.slice(0, 5000)}
-`
-
+Content: ${data.slice(0, 5000)}
+`,
+                {
+                    max_tokens: 3000,
+                    temperature: 0.2,
+                }
             );
-             console.log("quizData: ", quizData)
+            console.log("quizData: ", quizData)
         }
 
         const stream = await Stream.create({
@@ -384,6 +361,7 @@ export const geSpecificStream = async (req, res) => {
             await indexStreamKnowledgeBase({
                 streamId: stream._id,
                 text: stream.streamInfo.data,
+                transcriptSegments: stream.streamInfo.transcriptSegments || [],
                 chunks: stream.streamInfo.transcriptChunks || [],
                 metadata: {
                     type: stream.streamInfo.type,
@@ -502,12 +480,24 @@ export const updateStream = async (req, res) => {
 
         // console.log(stream)
         let data = null
+        const userEmail = String(user.email || "").trim().toLowerCase();
+        const nextEntry = { name: user.fullName, points: points, badge: "", userId: userId, email: user.email };
         if (stream.streamInfo.leaderboard != "") {
             const temp = JSON.parse(stream.streamInfo?.leaderboard)
-            data = [...temp, { name: user.fullName, points: points, badge: "", userId: userId }]
+            const existingIndex = temp.findIndex((entry) => {
+                const entryEmail = String(entry?.email || entry?.gmail || "").trim().toLowerCase();
+                return entryEmail === userEmail || String(entry?.userId) === String(userId);
+            });
+
+            if (existingIndex >= 0) {
+                temp[existingIndex] = nextEntry;
+                data = temp;
+            } else {
+                data = [...temp, nextEntry]
+            }
         }
         else {
-            data = [{ name: user.fullName, points: points, badge: "", userId: userId }]
+            data = [nextEntry]
         }
         data.sort((a, b) => b.points - a.points);
 

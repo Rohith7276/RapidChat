@@ -5,6 +5,7 @@ const DEFAULT_MAX_SECONDS = Number(process.env.RAG_MAX_CHUNK_SECONDS || 600);
 const DEFAULT_MIN_WORDS = Number(process.env.RAG_MIN_CHUNK_WORDS || 100);
 const DEFAULT_MAX_WORDS = Number(process.env.RAG_MAX_CHUNK_WORDS || 1200);
 const DEFAULT_MAX_GAP_SECONDS = Number(process.env.RAG_MAX_SEGMENT_GAP_SECONDS || 6);
+const DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS = Number(process.env.RAG_REBASE_OFFSET_THRESHOLD_SECONDS || 180);
 
 function cleanText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
@@ -55,13 +56,38 @@ export function normalizeTranscriptSegments(rawTranscript) {
     const transcriptSource = rawTranscript?.content ?? rawTranscript?.transcript ?? rawTranscript?.segments ?? rawTranscript?.items ?? rawTranscript;
     const entries = Array.isArray(transcriptSource) ? transcriptSource : [];
 
-    return entries
+    const normalizedSegments = entries
         .map(normalizeTranscriptEntry)
         .filter(Boolean)
         .map((segment, index) => ({
             ...segment,
             index,
         }));
+
+    const numericStarts = normalizedSegments
+        .map((segment) => Number(segment.start))
+        .filter((start) => Number.isFinite(start) && start >= 0);
+
+    if (!numericStarts.length) {
+        return normalizedSegments;
+    }
+
+    const earliestStart = Math.min(...numericStarts);
+    if (earliestStart < DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS) {
+        return normalizedSegments;
+    }
+
+    // Some providers return a consistent leading offset; rebase so transcript start aligns near 00:00.
+    return normalizedSegments.map((segment) => {
+        const rebasedStart = Math.max(0, Number(segment.start || 0) - earliestStart);
+        const rebasedEnd = Math.max(rebasedStart, Number(segment.end || rebasedStart) - earliestStart);
+
+        return {
+            ...segment,
+            start: rebasedStart,
+            end: rebasedEnd,
+        };
+    });
 }
 
 function finalizeChunk(chunkSegments, index) {
