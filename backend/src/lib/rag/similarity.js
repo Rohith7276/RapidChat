@@ -251,7 +251,62 @@ export function retrieveTimestampContext({ streamId, seconds }) {
     }
 
     const transcriptSegments = Array.isArray(knowledgeBase.transcriptSegments) ? knowledgeBase.transcriptSegments : [];
-    const metadataContext = buildTimestampMetadataContext(transcriptSegments, seconds, {
+
+
+
+    // Support a range query when seconds is an object with start/end
+    let startSeconds = null;
+    let endSeconds = null;
+    if (seconds && typeof seconds === "object") {
+        startSeconds = Number(seconds.secondsStart ?? seconds.start ?? seconds.startSeconds ?? null);
+        endSeconds = Number(seconds.secondsEnd ?? seconds.end ?? seconds.endSeconds ?? null);
+        if (Number.isNaN(startSeconds)) startSeconds = null;
+        if (Number.isNaN(endSeconds)) endSeconds = null;
+    } else {
+        startSeconds = Number(seconds);
+        endSeconds = Number(seconds);
+    }
+
+    if (startSeconds == null) {
+        return { segments: [], context: "" };
+    }
+
+    // If it's a range, select overlapping segments
+    if (endSeconds != null && endSeconds !== startSeconds) {
+        const selectedSegments = (Array.isArray(transcriptSegments) ? transcriptSegments : []).filter((segment) => {
+            const segStart = Number(segment.start ?? 0);
+            const segEnd = Number(segment.end ?? segStart);
+            return segEnd >= startSeconds && segStart <= endSeconds;
+        });
+
+        if (selectedSegments.length) {
+            const windowStart = Math.max(0, startSeconds - 5);
+            const windowEnd = endSeconds + 5;
+            return {
+                segments: selectedSegments,
+                context: [`Requested timestamp window: [${formatSecondsToTimestamp(windowStart)} - ${formatSecondsToTimestamp(windowEnd)}]`, buildTimestampedContextFromSegments(selectedSegments)].join("\n\n"),
+                matchedTimestamp: selectedSegments[0]?.start ?? null,
+                matchedSeconds: selectedSegments[0]?.start ?? null,
+                windowStart,
+                windowEnd,
+                retrievalSource: "metadata-range",
+            };
+        }
+
+        return {
+            segments: [],
+            chunks: [],
+            context: "",
+            matchedTimestamp: null,
+            matchedSeconds: null,
+            windowStart: startSeconds,
+            windowEnd: endSeconds,
+            retrievalSource: "unavailable",
+        };
+    }
+
+    // Single-second behavior remains: find segments around the second
+    const metadataContext = buildTimestampMetadataContext(transcriptSegments, startSeconds, {
         neighborCount: 1,
     });
 
@@ -259,7 +314,7 @@ export function retrieveTimestampContext({ streamId, seconds }) {
         return metadataContext;
     }
 
-    const chunks = retrieveChunksByTimestamp({ streamId, seconds, topK: 3 });
+    const chunks = retrieveChunksByTimestamp({ streamId, seconds: startSeconds, topK: 3 });
     if (!chunks.length) {
         return {
             segments: [],
@@ -267,12 +322,14 @@ export function retrieveTimestampContext({ streamId, seconds }) {
             context: "",
             matchedTimestamp: null,
             matchedSeconds: null,
+            windowStart: startSeconds,
+            windowEnd: startSeconds,
             retrievalSource: "unavailable",
         };
     }
 
-    const windowStart = Math.max(0, Number(seconds) - 300);
-    const windowEnd = Number(seconds) + 300;
+    const windowStart = Math.max(0, startSeconds - 300);
+    const windowEnd = startSeconds + 300;
     return {
         segments: [],
         chunks,
@@ -346,9 +403,19 @@ export async function getStreamContextForQuestion({ streamId, question, topK = 4
     }
 
     const timestampQuery = extractTimestampQuery(question);
-
     if (timestampQuery) {
-        const timestampContext = retrieveTimestampContext({ streamId, seconds: timestampQuery.seconds });
+        // Build seconds param for single or range queries
+        let secondsParam = null;
+        let responseSeconds = null;
+        if (timestampQuery.secondsStart != null && timestampQuery.secondsEnd != null) {
+            secondsParam = { secondsStart: timestampQuery.secondsStart, secondsEnd: timestampQuery.secondsEnd };
+            responseSeconds = { start: timestampQuery.secondsStart, end: timestampQuery.secondsEnd };
+        } else {
+            secondsParam = timestampQuery.seconds ?? null;
+            responseSeconds = timestampQuery.seconds ?? null;
+        }
+
+        const timestampContext = retrieveTimestampContext({ streamId, seconds: secondsParam });
 
         if (!timestampContext.context) {
             return {
@@ -356,7 +423,7 @@ export async function getStreamContextForQuestion({ streamId, question, topK = 4
                 retrievalMode: "timestamp",
                 retrievalSource: "unavailable",
                 timestamp: timestampQuery.timestamp,
-                seconds: timestampQuery.seconds,
+                seconds: responseSeconds,
                 chunks: [],
                 context: "",
                 matchedTimestamp: null,
@@ -369,11 +436,11 @@ export async function getStreamContextForQuestion({ streamId, question, topK = 4
             retrievalMode: "timestamp",
             retrievalSource: timestampContext.retrievalSource || "metadata",
             timestamp: timestampQuery.timestamp,
-            seconds: timestampQuery.seconds,
+            seconds: responseSeconds,
             chunks: timestampContext.segments.length ? timestampContext.segments : timestampContext.chunks || [],
             context: timestampContext.context,
             matchedTimestamp: timestampContext.matchedTimestamp != null ? formatSecondsToTimestamp(timestampContext.matchedTimestamp) : timestampQuery.timestamp,
-            matchedSeconds: timestampContext.matchedSeconds ?? timestampQuery.seconds,
+            matchedSeconds: timestampContext.matchedSeconds ?? responseSeconds,
         };
     }
 

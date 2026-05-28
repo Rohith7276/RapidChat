@@ -69,6 +69,18 @@ export function extractTimestampQuery(text) {
         return null;
     }
 
+    // If the user provided a range (two timestamps), return both as start/end.
+    if (matches.length >= 2) {
+        const first = matches[0];
+        const second = matches[1];
+        return {
+            timestamp: `${first.timestamp} - ${second.timestamp}`,
+            secondsStart: first.seconds,
+            secondsEnd: second.seconds,
+            index: first.index,
+        };
+    }
+
     return matches[0];
 }
 

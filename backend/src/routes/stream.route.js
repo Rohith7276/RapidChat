@@ -1,6 +1,6 @@
 import express from "express"
 import { protectRoute } from "../middleware/auth.middleware.js";
-import { checkUrl, endStream, geSpecificStream, getAllStream, getStream, streamControls, updateStream, uploadPdf } from "../controllers/stream.controller.js";
+import { checkUrl, endStream, geSpecificStream, getAllStream, getStream, streamControls, updateStream, uploadPdf, debugTimestamp, reindexStream } from "../controllers/stream.controller.js";
 import { createStream,  getVideoId } from "../controllers/stream.controller.js"; 
 import {streamAi } from "../controllers/ai.controller.js"
 import { upload } from "../middleware/multer.middleware.js"; 
@@ -18,5 +18,7 @@ router.get("/check-url/",protectRoute, checkUrl);
 router.post("/stream-ai", protectRoute, streamAi);
 router.post("/ask-question", protectRoute, streamAi);
 router.post("/create-stream", protectRoute, createStream);
+router.get("/debug-timestamp", protectRoute, debugTimestamp);
+router.get("/reindex-stream", protectRoute, reindexStream);
 
 export default router;

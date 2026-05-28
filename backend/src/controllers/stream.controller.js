@@ -8,7 +8,8 @@ import path from 'path';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import { cloudinary } from "../lib/cloudinary.js";
 import PdfParse from "pdf-parse";
-import { clearStreamContext, indexStreamKnowledgeBase } from "../lib/rag/similarity.js";
+import { clearStreamContext, indexStreamKnowledgeBase, retrieveTimestampContext } from "../lib/rag/similarity.js";
+import { getStreamKnowledgeBase } from "../lib/rag/store.js";
 import { chunkTranscriptSegments, normalizeTranscriptSegments } from "../lib/rag/transcript.js";
 // import { YoutubeTranscript, YoutubeTranscriptDisabledError, YoutubeTranscriptNotAvailableError } from 'youtube-transcript-plus';
 import {
@@ -54,6 +55,69 @@ function buildTranscriptPayload(transcriptResult) {
         transcriptChunks,
     };
 }
+
+
+export const debugTimestamp = async (req, res) => {
+    try {
+        const { streamId, start, end } = req.query;
+
+        if (!streamId) return res.status(400).json({ message: "streamId query param is required" });
+
+        const startNum = start != null ? Number(start) : null;
+        const endNum = end != null ? Number(end) : null;
+
+        const secondsParam = startNum != null && endNum != null ? { secondsStart: startNum, secondsEnd: endNum } : (startNum != null ? startNum : null);
+
+        const timestampContext = retrieveTimestampContext({ streamId, seconds: secondsParam });
+        const knowledgeBase = getStreamKnowledgeBase(streamId);
+
+        return res.status(200).json({ timestampContext, knowledgeBase });
+    } catch (err) {
+        console.error("debugTimestamp error:", err?.message);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const reindexStream = async (req, res) => {
+    try {
+        const { streamId, start, end } = req.query;
+        if (!streamId) return res.status(400).json({ message: "streamId query param is required" });
+
+        const stream = await Stream.findById(streamId);
+        if (!stream) return res.status(404).json({ message: "Stream not found" });
+
+        const transcriptSegments = stream.streamInfo?.transcriptSegments || [];
+        const transcriptChunks = stream.streamInfo?.transcriptChunks || [];
+        const text = stream.streamInfo?.data || "";
+
+        const knowledgeBase = await indexStreamKnowledgeBase({
+            streamId: stream._id,
+            text,
+            transcriptSegments,
+            chunks: transcriptChunks,
+            metadata: {
+                type: stream.streamInfo?.type,
+                title: stream.streamInfo?.title,
+                url: stream.streamInfo?.url,
+                source: "manual-reindex",
+            },
+        });
+
+        // If start/end were provided, also return timestampContext
+        let timestampContext = null;
+        if ((start != null) || (end != null)) {
+            const startNum = start != null ? Number(start) : null;
+            const endNum = end != null ? Number(end) : null;
+            const secondsParam = startNum != null && endNum != null ? { secondsStart: startNum, secondsEnd: endNum } : (startNum != null ? startNum : null);
+            timestampContext = retrieveTimestampContext({ streamId: stream._id, seconds: secondsParam });
+        }
+
+        return res.status(200).json({ knowledgeBase, timestampContext });
+    } catch (err) {
+        console.error("reindexStream error:", err?.message);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
 
 export const getVideoId = async (req, res) => {
     try {

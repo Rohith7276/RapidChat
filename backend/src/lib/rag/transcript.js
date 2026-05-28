@@ -73,14 +73,33 @@ export function normalizeTranscriptSegments(rawTranscript) {
     }
 
     const earliestStart = Math.min(...numericStarts);
-    if (earliestStart < DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS) {
-        return normalizedSegments;
+
+    // Detect if timestamps are in milliseconds rather than seconds.
+    // If the maximum numeric start is larger than the rebase threshold in milliseconds,
+    // convert all timing values to seconds first.
+    const maxStart = Math.max(...numericStarts);
+    let segmentsInSeconds = normalizedSegments;
+    if (maxStart > DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS * 1000) {
+        segmentsInSeconds = normalizedSegments.map((segment) => ({
+            ...segment,
+            start: Number(segment.start) / 1000,
+            end: Number(segment.end) / 1000,
+        }));
+    }
+
+    const numericStartsSeconds = segmentsInSeconds
+        .map((segment) => Number(segment.start))
+        .filter((start) => Number.isFinite(start) && start >= 0);
+
+    const earliestStartSeconds = numericStartsSeconds.length ? Math.min(...numericStartsSeconds) : 0;
+    if (earliestStartSeconds < DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS) {
+        return segmentsInSeconds;
     }
 
     // Some providers return a consistent leading offset; rebase so transcript start aligns near 00:00.
-    return normalizedSegments.map((segment) => {
-        const rebasedStart = Math.max(0, Number(segment.start || 0) - earliestStart);
-        const rebasedEnd = Math.max(rebasedStart, Number(segment.end || rebasedStart) - earliestStart);
+    return segmentsInSeconds.map((segment) => {
+        const rebasedStart = Math.max(0, Number(segment.start || 0) - earliestStartSeconds);
+        const rebasedEnd = Math.max(rebasedStart, Number(segment.end || rebasedStart) - earliestStartSeconds);
 
         return {
             ...segment,
