@@ -5,7 +5,6 @@ import { MoveLeft } from 'lucide-react';
 import { axiosInstance } from "../../../lib/axios";
 import { useChatStore } from "../../../store/useChatStore";
 import { useAuthStore } from "../../../store/useAuthStore";
-import { jsonrepair } from "jsonrepair";
 
 const parseStreamJson = (value) => {
   if (!value) return null;
@@ -25,7 +24,7 @@ const parseStreamJson = (value) => {
         ? normalizedValue.slice(startIndex, endIndex + 1)
         : normalizedValue;
 
-    return JSON.parse(jsonrepair(jsonText));
+    return JSON.parse(jsonText);
   } catch (error) {
     console.log("Failed to parse quiz data", error);
     return null;
