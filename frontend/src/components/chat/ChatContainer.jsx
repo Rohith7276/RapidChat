@@ -74,7 +74,7 @@ const chatContainer = () => {
       .replace(/\*(.*?)\*/g, "<i>$1</i>")
       .replace(/---/g, "<hr>")
       .replace("@rapid", "<b>@rapid</b>")
-      .replace(timestampPattern, (match) => `<button type="button" data-timestamp-seek="${match}" class="mx-1 inline-flex items-center rounded-full  px-1 py-0.5 text-base font-bold  underline decoration-dotted decoration-secondary/60 hover:bg-primary/20">${match}</button>`)
+      .replace(timestampPattern, (match) => `<button type="button" data-timestamp-seek="${match}" class="mx-1 inline-flex items-center rounded-full  px-1 py-0.5 text-base font-bold  text-secondary  decoration-secondary/60 hover:bg-primary/20">${match}</button>`)
       .replace(/\n/g, "<br/>");
   };
 

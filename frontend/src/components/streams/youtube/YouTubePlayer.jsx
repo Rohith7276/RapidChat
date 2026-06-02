@@ -6,6 +6,7 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import {  MoveLeft, PictureInPicture,   PictureInPicture2Icon  } from "lucide-react";
 import { jsPDF } from "jspdf"
 import { Link, useNavigate } from "react-router-dom";
+import avatar from "../../../../public/avatar.png"
 import Loader from '../../../components/Loader'; 
 import toast from "react-hot-toast";
 const YouTubePlayer = () => {
@@ -157,7 +158,7 @@ const YouTubePlayer = () => {
           <div className="w-full p-8 mb-[-5rem] justify-end flex">
             <Link className=" btn" to={"/stream"}><MoveLeft /> </Link>
           </div>
-          <h2 className="flex justify-center items-center my-1 pb-8"> Video streaming by <span className="ml-2 mr-1"><img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic} alt="profile" /></span> <span>{streamData?.senderInfo?.fullName}</span></h2>
+          <h2 className="flex justify-center items-center my-1 pb-8"> Video streaming by <span className="ml-2 mr-1">{streamData?.senderInfo?.profilePic ? <img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic } alt="profile" /> : <img className="size-6 object-cover rounded-full" src={avatar} alt="profile" />}</span> <span>{streamData?.senderInfo?.fullName}</span></h2>
          <div
         ref={dragRef}
         className={`transition-all !z-[10] duration-300 p-3 rounded-lg bg-black`}

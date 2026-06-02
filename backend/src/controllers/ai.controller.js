@@ -177,6 +177,21 @@ const runAiConversation = async ({ input, senderId, receiverId, groupId, referen
   return response;
 };
 
+export const replyAns = async (req, res) => {
+  try {
+    const question = req.body.question;
+    console.log(req.body.question)
+     const response = await getResponse("give me only important keywords which helps me to explain the question without any extra text or symantic tags or chars like \\n for : " + question);
+     console.log("AI response:", response);
+     res.status(200).json({ answer: response });
+      return response;
+ 
+  } catch (error) {
+    console.error("Error in replyAns: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+    return error
+  }
+};
 export const AiChat = async (req, res) => {
   try {
     const { input, receiverId, groupId } = req.body;
