@@ -19,7 +19,8 @@ const corsOrigin = (origin, callback) => {
 
 app.use(
   cors({
-    origin: corsOrigin,
+    // origin: corsOrigin,
+    origin: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   })

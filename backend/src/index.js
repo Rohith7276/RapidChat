@@ -39,7 +39,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN ||  "https://rohith7276.github.i
 
 app.use(
   cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    origin: true,
     credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   })
