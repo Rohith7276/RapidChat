@@ -10,7 +10,7 @@ float getAlbedoDifference(float lAlbedo, vec2 offsetCoord) {
 void generateNormals(inout vec3 newNormal, vec3 albedo, vec3 viewPos, in int mat) {
     float NoU = clamp(dot(newNormal, upVec), 0.0, 1.0);
     float viewDistance = clamp(length(viewPos) * 0.01, 0.0, 1.0);
-    float disableNormal = float(mat == 30000) * NoU + viewDistance;
+    float disableNormal = float(mat == 50000) * NoU + viewDistance;
 
     if (disableNormal < 0.75) {
         float lAlbedo = length(albedo);

@@ -176,7 +176,7 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
           };
 
           // send audio every 3 sec
-          mediaRecorder.start(3000);
+          mediaRecorder.start(5000);
         }
 
         setIsInitialized(true);

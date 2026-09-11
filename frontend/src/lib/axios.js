@@ -11,7 +11,7 @@ export const getApiBaseUrl = () => {
 };
 
 export const axiosInstance = axios.create({
-  // baseURL: import.meta.env.MODE === "development" ? "http://localhost:3000/api" : import.meta.env.VITE_API_BASE_URL + "/api",
+  // baseURL: import.meta.env.MODE === "development" ? "http://localhost:5000/api" : import.meta.env.VITE_API_BASE_URL + "/api",
   baseURL: getApiBaseUrl(),
   timeout: 40000,
   withCredentials: true,

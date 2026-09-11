@@ -32,7 +32,7 @@ import multer from "multer";
 
 dotenv.config();
 
-const allowedOrigins = (process.env.CORS_ORIGIN ||  "https://rohith7276.github.io/,http://127.0.0.1:5500,http://localhost:3000,http://localhost:5173")
+const allowedOrigins = (process.env.CORS_ORIGIN ||  "https://rohith7276.github.io/,http://127.0.0.1:5500,http://localhost:5000,http://localhost:5173")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);

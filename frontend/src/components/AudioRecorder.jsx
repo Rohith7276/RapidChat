@@ -40,7 +40,7 @@ const SpeechToText = () => {
         sendAiText(finalTranscript);
         setTimeout(() => {
           setTranscript("")
-        }, 3000);
+        }, 5000);
       }
     };
 

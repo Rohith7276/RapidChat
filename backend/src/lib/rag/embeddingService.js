@@ -1,3 +1,4 @@
+// Import the pipeline function directly from the transformers library using a named import.
 import { pipeline } from "@xenova/transformers";
 
 const DEFAULT_EMBEDDING_MODEL = process.env.RAG_EMBEDDING_MODEL || "Xenova/all-MiniLM-L6-v2";
