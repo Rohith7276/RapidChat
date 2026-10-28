@@ -6,7 +6,7 @@ import Peer from 'peerjs';
 import { useChatStore } from "./useChatStore.js";
 
 // const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5000" : import.meta.env.VITE_API_BASE_URL +"/";
-const BASE_URL = getApiBaseUrl().replace(/\/api$/, "/");
+const BASE_URL = getApiBaseUrl().replace(/\/api\/?$/, "");
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -121,7 +121,12 @@ export const useAuthStore = create((set, get) => ({
 
   connectSocket: () => {
     const { authUser } = get();
-    if (!authUser || get().socket?.connected) return;
+    if (!authUser) return;
+    if (get().socket?.connected) return;
+
+    if (get().socket) {
+      get().socket.disconnect();
+    }
 
     get().destroyPeer();
 
@@ -129,11 +134,26 @@ export const useAuthStore = create((set, get) => ({
       query: {
         userId: authUser._id,
       },
+      transports: ["websocket", "polling"],
     });
     socket.connect();
 
     set({ socket: socket }); 
+
+    socket.on("connect", () => {
+      console.log("Socket connected! ID:", socket.id, "to:", BASE_URL);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connect_error to " + BASE_URL + ":", error.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+    });
+
     socket.on("getOnlineUsers", (userIds) => {
+      console.log("Received onlineUsers:", userIds);
       set({ onlineUsers: userIds });
     });
 

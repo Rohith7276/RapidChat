@@ -23,12 +23,12 @@ export const useChatStore = create((set, get) => ({
 
   getNotifications: async () => {
     const socket = useAuthStore.getState().socket;
+    if (!socket) return;
 
+    socket.off("notification");
     socket.on("notification", () => {
-      set({ sidebarRefresh: true })
-
-    }
-    )
+      set({ sidebarRefresh: true });
+    });
   },
 
   getUsers: async () => {
@@ -92,7 +92,9 @@ export const useChatStore = create((set, get) => ({
 
       const socket = useAuthStore.getState().socket;
 
-      socket.emit("getSocketId", user._id, socket.id);
+      if (socket && user?._id) {
+        socket.emit("getSocketId", user._id, socket.id);
+      }
 
       if (res.data != null)
         set({ messages: res.data });
@@ -186,16 +188,20 @@ export const useChatStore = create((set, get) => ({
     const { selectedUser } = get();
     if (!selectedUser) return;
     const socket = useAuthStore.getState().socket;
+    if (!socket) return;
 
-
+    socket.off('takeSocketId');
     socket.on('takeSocketId', data => {
       set({ selectedUserSocketId: data })
-    })
+    });
 
+    socket.off("newMessage");
     socket.on("newMessage", (newMessage) => {
-      set({ sidebarRefresh: true })
+      console.log("Socket received newMessage:", newMessage);
+      set({ sidebarRefresh: true });
 
-      const isMessageSentFromSelectedUser = (newMessage.senderId === selectedUser._id);
+      const currentSelected = get().selectedUser;
+      const isMessageSentFromSelectedUser = currentSelected && String(newMessage.senderId) === String(currentSelected._id);
       if (!isMessageSentFromSelectedUser) {
         return;
       }
@@ -203,42 +209,43 @@ export const useChatStore = create((set, get) => ({
       set({
         messages: [...get().messages, newMessage],
       });
-
     });
   },
   subscribeToGroup: () => {
     const { selectedUser } = get();
     const socket = useAuthStore.getState().socket;
     const authUser = useAuthStore.getState().authUser;
+    if (!socket || !selectedUser) return;
 
-    socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser._id });
+    socket.emit("joinGroup", { groupId: selectedUser._id, userId: authUser?._id });
 
-
-
+    socket.off("receiveGroupMessage");
     socket.on("receiveGroupMessage", (newMessage) => {
       set({ sidebarRefresh: true })
-      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
+      const isMessageSentFromSelectedUser = String(newMessage.groupId) === String(selectedUser._id);
       if (!isMessageSentFromSelectedUser) {
         return;
       }
       set({
         messages: [...get().messages, newMessage],
       });
-    })
+    });
 
+    socket.off("recieveGroupVideoCall");
     socket.on("recieveGroupVideoCall", (newMessage) => {
       set({ sidebarRefresh: true })
-      const isMessageSentFromSelectedUser = (newMessage.groupId === selectedUser._id);
+      const isMessageSentFromSelectedUser = String(newMessage.groupId) === String(selectedUser._id);
       if (!isMessageSentFromSelectedUser) {
         return;
       }
       set({
         messages: [...get().messages, newMessage],
       });
-    })
+    });
   },
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
+    if (!socket) return;
     const { selectedUser } = get();
 
     if (selectedUser?.fullName) socket.off("newMessage");

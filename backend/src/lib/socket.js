@@ -4,22 +4,29 @@ import express from "express";
 import cors from "cors";
 const app = express();
 const server = http.createServer(app);
-const allowedOrigins = (process.env.CORS_ORIGIN || "")
+
+const configuredOrigins = (process.env.CORS_ORIGIN || "https://rapid-chat-five.vercel.app,http://localhost:5173,http://localhost:5000,http://127.0.0.1:5173")
   .split(",")
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  const normalized = origin.trim().replace(/\/$/, "");
+  if (configuredOrigins.includes(normalized)) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)) return true;
+  return false;
+};
+
 const corsOrigin = (origin, callback) => {
-  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+  if (isAllowedOrigin(origin)) {
     return callback(null, true);
   }
-
-  return callback(new Error("Not allowed by CORS"));
+  return callback(new Error(`Not allowed by CORS: ${origin}`));
 };
 
 app.use(
   cors({
-    // origin: corsOrigin,
     origin: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
@@ -28,6 +35,7 @@ app.use(
 const io = new Server(server, {
   cors: {
     origin: corsOrigin,
+    credentials: true,
   },
 });
 const rooms = {}; // add this at top
@@ -341,8 +349,8 @@ io.on("connection", (socket) => {
     }
   }
 
-  // 🔹 Remove from userSocketMap
-  if (userId) {
+  // 🔹 Remove from userSocketMap only if this socket is still the active one
+  if (userId && userSocketMap[userId] === socket.id) {
     delete userSocketMap[userId];
   }
 

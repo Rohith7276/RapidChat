@@ -109,7 +109,7 @@ const chatContainer = () => {
       subscribeToGroup();
     }
     return () => unsubscribeFromMessages();
-  }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages]);
+  }, [selectedUser._id, getMessages, page, subscribeToMessages, unsubscribeFromMessages, socket]);
 
   useEffect(() => {
     setStreamMode(false)
