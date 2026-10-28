@@ -142,6 +142,9 @@ export const useAuthStore = create((set, get) => ({
 
     socket.on("connect", () => {
       console.log("Socket connected! ID:", socket.id, "to:", BASE_URL);
+      import("./useStreamStore.js").then((m) => {
+        m.useStreamStore.getState().getStreamCreation();
+      }).catch((e) => console.error("Error attaching stream store listeners:", e));
     });
 
     socket.on("connect_error", (error) => {

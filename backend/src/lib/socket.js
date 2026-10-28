@@ -44,7 +44,8 @@ const roomUserInfo = {}; // {roomId: {socketId: {displayName, userId}}}
 const userSocketMap = {}; // {userId: socketId}
 
 export function getReceiverSocketId(userId) {
-  return userSocketMap[userId];
+  if (!userId) return null;
+  return userSocketMap[String(userId)];
 }
 
 
@@ -64,19 +65,26 @@ const getUserInfo = (socketId) => {
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
   const userId = socket.handshake.query.userId;
-  if (userId) userSocketMap[userId] = socket.id;
-
-
-  socket.on("call-user", ({ targetUserId, roomId }) => {
-  const receiverSocket = userSocketMap[targetUserId];
-
-  if (receiverSocket) {
-    io.to(receiverSocket).emit("incoming-call", {
-      roomId,
-      from: socket.id
-    });
+  if (userId) {
+    userSocketMap[String(userId)] = socket.id;
+    socket.join(String(userId));
   }
-});
+
+
+  socket.on("call-user", ({ targetUserId, roomId, callerName }) => {
+    if (!targetUserId || !roomId) return;
+    const receiverSocket = userSocketMap[String(targetUserId)];
+    const payload = {
+      roomId,
+      from: socket.id,
+      callerName: callerName || getUserInfo(socket.id)?.displayName || "User"
+    };
+
+    if (receiverSocket) {
+      io.to(receiverSocket).emit("incoming-call", payload);
+    }
+    io.to(String(targetUserId)).emit("incoming-call", payload);
+  });
 
   socket.on("call-group", ({ targetUserIds = [], roomId, groupId, callerName }) => {
     if (!Array.isArray(targetUserIds) || !roomId) return;
@@ -182,31 +190,36 @@ io.on("connection", (socket) => {
   // Handle WebRTC offer
   socket.on("offer", (payload = {}) => {
     const target = payload.target || payload.to;
-    const offer = payload.sdp || payload.offer;
+    const sdp = payload.sdp || payload.offer;
+    const data = { offer: sdp, sdp, caller: socket.id, from: socket.id };
     resolveTargetSocketIds(target).forEach((socketId) => {
-      io.to(socketId).emit("offer", { offer, from: socket.id });
+      io.to(socketId).emit("offer", data);
     });
   });
 
   socket.on("answer", (payload = {}) => {
     const target = payload.target || payload.to;
-    const answer = payload.sdp || payload.answer;
+    const sdp = payload.sdp || payload.answer;
+    const data = { answer: sdp, sdp, caller: socket.id, from: socket.id };
     resolveTargetSocketIds(target).forEach((socketId) => {
-      io.to(socketId).emit("answer", { answer, from: socket.id });
+      io.to(socketId).emit("answer", data);
     });
   });
 
   socket.on("ice-candidate", (payload = {}) => {
     const target = payload.target || payload.to;
     const candidate = payload.candidate;
+    const data = { candidate, from: socket.id, caller: socket.id };
     resolveTargetSocketIds(target).forEach((socketId) => {
-      io.to(socketId).emit("ice-candidate", { candidate, from: socket.id });
+      io.to(socketId).emit("ice-candidate", data);
     });
   });
 
   socket.on("end-call", ({ target }) => {
     if (!target) return;
-    io.to(target).emit("call-ended", { from: socket.id });
+    resolveTargetSocketIds(target).forEach((socketId) => {
+      io.to(socketId).emit("call-ended", { from: socket.id });
+    });
   });
 
   // Handle screen share request

@@ -131,15 +131,16 @@ const chatContainer = () => {
     }
   }, [isUserMessageLoading]);
 
-  //Infinite scroll
   useEffect(() => {
-    socket.on("incoming-call", (data) => {
-      setVideoCall(true)
-
-      setIncomingCall(data)
-    });
-    return () => socket.off("incoming-call");
-  }, [])
+    if (!socket) return;
+    const handleIncomingCall = (data) => {
+      setIncomingCall(data);
+    };
+    socket.on("incoming-call", handleIncomingCall);
+    return () => {
+      if (socket) socket.off("incoming-call", handleIncomingCall);
+    };
+  }, [socket]);
 
 
   useEffect(() => {
@@ -188,24 +189,24 @@ const chatContainer = () => {
     );
   }
 
-
   return (
-    <div className="flex-1 w-[70vw] flex flex-col  overflow-auto">
+    <div className="flex-1 w-full min-w-0 flex flex-col overflow-auto">
       <ChatHeader />
       {incomingCall && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 shadow-lg text-center">
-              <h2 className="text-xl font-bold mb-2">Incoming Call from {incomingCall?.callerName || callerName || "User"}</h2>
-              <p className="mb-4">You have an incoming call. Accept?</p>
+            <div className="bg-base-100 border border-base-300 rounded-lg p-6 shadow-xl text-center max-w-sm w-full mx-4">
+              <h2 className="text-xl font-bold mb-2">Incoming Call from {incomingCall?.callerName || callerName || "Friend"}</h2>
+              <p className="mb-4 text-base-content/70">You have an incoming video call. Accept?</p>
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => {
-                    socket.emit("join-room", {
-                      roomId: incomingCall.roomId,
-                      emailId: authUser?.email || authUser?.fullName || "User"
-                    });
-
+                    const roomId = incomingCall.roomId;
+                    setVideoCall(true);
                     setIncomingCall(null);
+                    socket.emit("join-room", {
+                      roomId,
+                      emailId: authUser?.fullName || authUser?.email || "User"
+                    });
                   }}
                   className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
                 >
@@ -213,8 +214,11 @@ const chatContainer = () => {
                 </button>
                 <button
                   onClick={() => {
+                    if (incomingCall?.from) {
+                      socket.emit("end-call", { target: incomingCall.from });
+                    }
                     setIncomingCall(null);
-
+                    setVideoCall(false);
                   }}
                   className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
                 >
@@ -279,17 +283,21 @@ const chatContainer = () => {
                     <div className="size-10 rounded-full border">
                       <img loading="blur"
                         src={
-                          message.groupId !== "" || message.type == "ai" ? message.senderInfo.profilePic || "/avatar.png" : message.senderId === authUser._id ? authUser.profilePic || "/avatar.png" : selectedUser.profilePic || "/avatar.png"
+                          message.groupId || message.type === "ai"
+                            ? message?.senderInfo?.profilePic || "/avatar.png"
+                            : message.senderId === authUser?._id
+                              ? authUser?.profilePic || "/avatar.png"
+                              : selectedUser?.profilePic || "/avatar.png"
                         }
                         alt="profile pic"
                       />
                     </div>
                   </div>
-                  {(index == 0 || new Date(messages[index - 1]?.createdAt).getMinutes() != new Date(message.createdAt).getMinutes()) &&
+                  {(index === 0 || new Date(messages[index - 1]?.createdAt).getMinutes() !== new Date(message.createdAt).getMinutes()) &&
                     <div className="chat-header mb-1">
                       <time className="text-xs flex opacity-50 ml-1">
-                        {message.senderId === authUser._id ? message.type == 'ai' ? "Rapid AI" : "You" : selectedUser.fullName} •&nbsp;
-                        {message.type == 'ai' ? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
+                        {message.senderId === authUser?._id ? (message.type === 'ai' ? "Rapid AI" : "You") : (selectedUser?.fullName || selectedUser?.name || "Friend")} •&nbsp;
+                        {message.type === 'ai' ? <span ><BrainCircuit height={"0.88rem"} /></span> : formatMessageTime(message.createdAt)}
                       </time>
                     </div>}
                   <div className={`chat-bubble  flex flex-col ${message.senderId === authUser._id && message.type != "ai" ? "chat-end bg-primary text-primary-content" : "chat-start  text-base-content  bg-base-200 "}`} onClick={(event) => {

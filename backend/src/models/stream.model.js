@@ -10,7 +10,7 @@ const streamSchema = new mongoose.Schema(
         receiverId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",  
-            default: ""
+            default: null
         }, 
         groupId: {
             type: String,

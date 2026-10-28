@@ -9,8 +9,9 @@ import { useStreamStore } from "../../store/useStreamStore";
 
 import { useAuthStore } from "../../store/useAuthStore";
 import { useChatStore } from "../../store/useChatStore";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 const ProfilePopUp = ({ selectedUser, onlineUsers }) => {
+    const navigate = useNavigate();
     const popUp = useRef(null);
     console.log("see", selectedUser)
 

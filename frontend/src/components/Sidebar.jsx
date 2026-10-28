@@ -10,7 +10,7 @@ const Sidebar = () => {
   const { getUsers, getNotifications, sidebarRefresh, setSidebarRefresh, groups, users, selectedUser, setSelectedUser, isUsersLoading, addFriend } = useChatStore();
   const { getStreamCreation, streamMode } = useStreamStore();
 
-  const { onlineUsers, authUser } = useAuthStore();
+  const { onlineUsers, authUser, socket } = useAuthStore();
   const [friendId, setFriendId] = useState("");
 
   useEffect(() => {
@@ -24,7 +24,7 @@ const Sidebar = () => {
     getNotifications();
     getStreamCreation();
     getUsers();
-  }, []);
+  }, [socket]);
 
   const filteredUsers = [...users, ...groups];
 

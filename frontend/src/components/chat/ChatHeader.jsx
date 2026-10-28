@@ -61,13 +61,12 @@ const ChatHeader = () => {
           {aiTalk && <AiTalk />}
           {/* //video stream */}
           <button
-            className={`streamIcon btn btn-circle ${streamLoading ? "cursor-not-allowed opacity-70" : ""} ${streamData?.senderInfo != undefined ? "text-red-500" : "text-zinc-400"} `}
+            className={`streamIcon btn btn-circle ${streamLoading ? "cursor-not-allowed opacity-70" : ""} ${streamData && streamData._id && !streamData.stopTime ? "text-red-500 animate-pulse" : "text-zinc-400"} `}
             onClick={handleStream}
             type="button"
             disabled={streamLoading}
             aria-busy={streamLoading}
           >
-            {console.log("streamData in header: ", streamData)}
             {streamLoading ? (
               <svg aria-hidden="true" className="w-5 h-5 animate-spin" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor" />
@@ -77,18 +76,20 @@ const ChatHeader = () => {
               <TvMinimalPlay />
             )}
 
-            {streamData?.senderInfo != undefined && (
+            {streamData && streamData._id && !streamData.stopTime && streamData?.senderInfo && (
               <div className="p-1 bg-base-content max-w-74 rounded-md absolute z-[100] mt-[10rem] max-h-30 streamInfo text-base-200">
                 <div className="p-2">
                   <div className="flex gap-1 items-center justify-center flex-col w-full">
-                    <h1 className="text-base-50 font-bold text-xl">{streamData?.streamInfo?.title}</h1>
-                    <h1>{streamData?.streamInfo?.description}</h1>
+                    <h1 className="text-base-50 font-bold text-xl">{streamData?.streamInfo?.title || "Active Stream"}</h1>
+                    <h1>{streamData?.streamInfo?.description || ""}</h1>
                   </div>
                   <div className="flex gap-2 mt-1 items-center opacity-70 justify-center">
                     <h1>Created by</h1>
                     <img className="size-6 object-cover rounded-full" src={streamData?.senderInfo?.profilePic || "/avatar.png"} alt="profile" />
-                    <h1>{streamData?.senderInfo?.fullName}</h1>
-                    <h1>{"on " + new Date(streamData?.createdAt).toDateString() + " at " + formatMessageTime(new Date(streamData?.createdAt))}</h1>
+                    <h1>{streamData?.senderInfo?.fullName || "Friend"}</h1>
+                    {streamData?.createdAt && (
+                      <h1>{"on " + new Date(streamData.createdAt).toDateString() + (formatMessageTime(streamData.createdAt) ? " at " + formatMessageTime(streamData.createdAt) : "")}</h1>
+                    )}
                   </div>
                 </div>
               </div>

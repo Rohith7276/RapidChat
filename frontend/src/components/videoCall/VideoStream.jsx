@@ -257,10 +257,11 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
       ]
     });
 
-
-    stream.getTracks().forEach(track => {
-      peer.addTrack(track, stream);
-    });
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        peer.addTrack(track, stream);
+      });
+    }
 
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -280,66 +281,121 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
       peer.setLocalDescription(offer);
       socket.emit("offer", {
         target: userToSignal,
-        sdp: offer
+        sdp: offer,
+        offer: offer
       });
-    });
+    }).catch(err => console.error("Error creating offer:", err));
 
     peersRef.current[userToSignal] = peer;
   };
 
 
   useEffect(() => {
-    const handleOffer = async ({ sdp, caller }) => {
-      const peer = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-      });
+    const handleOffer = async (payload = {}) => {
+      const sdp = payload?.sdp || payload?.offer;
+      const caller = payload?.caller || payload?.from;
+      if (!sdp || !caller) return;
 
-      localStreamRef.current.getTracks().forEach(track => {
-        peer.addTrack(track, localStreamRef.current);
-      });
+      let peer = peersRef.current[caller];
+      if (!peer) {
+        peer = new RTCPeerConnection({
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        });
 
-      peer.ontrack = (event) => {
-        markConnected();
-        const savedName = peerNamesRef.current[caller];
-        upsertPeerStream(caller, event.streams[0], savedName);
-      };
-
-      peer.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit("ice-candidate", {
-            target: caller,
-            candidate: event.candidate
+        if (localStreamRef.current) {
+          localStreamRef.current.getTracks().forEach(track => {
+            peer.addTrack(track, localStreamRef.current);
           });
         }
-      };
 
-      await peer.setRemoteDescription(new RTCSessionDescription(sdp));
+        peer.ontrack = (event) => {
+          markConnected();
+          const savedName = peerNamesRef.current[caller];
+          upsertPeerStream(caller, event.streams[0], savedName);
+        };
 
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
+        peer.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("ice-candidate", {
+              target: caller,
+              candidate: event.candidate
+            });
+          }
+        };
 
-      socket.emit("answer", {
-        target: caller,
-        sdp: answer
-      });
+        peersRef.current[caller] = peer;
+      }
 
-      peersRef.current[caller] = peer;
-    }
-    const handleAnswer = ({ sdp, caller }) => {
+      try {
+        await peer.setRemoteDescription(new RTCSessionDescription(sdp));
+
+        if (peer._pendingIce?.length) {
+          for (const cand of peer._pendingIce) {
+            try { await peer.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+          }
+          peer._pendingIce = [];
+        }
+
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+
+        socket.emit("answer", {
+          target: caller,
+          sdp: answer,
+          answer: answer
+        });
+      } catch (err) {
+        console.error("Error handling offer:", err);
+      }
+    };
+
+    const handleAnswer = async (payload = {}) => {
+      const sdp = payload?.sdp || payload?.answer;
+      const caller = payload?.caller || payload?.from;
+      if (!sdp || !caller) return;
+
       const peer = peersRef.current[caller];
-      peer.setRemoteDescription(new RTCSessionDescription(sdp));
-      setConnecting(false);
-    }
-    const handleIce = ({ from, candidate }) => {
+      if (peer) {
+        try {
+          await peer.setRemoteDescription(new RTCSessionDescription(sdp));
+          setConnecting(false);
+          markConnected();
+
+          if (peer._pendingIce?.length) {
+            for (const cand of peer._pendingIce) {
+              try { await peer.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+            }
+            peer._pendingIce = [];
+          }
+        } catch (err) {
+          console.error("Error handling answer:", err);
+        }
+      }
+    };
+
+    const handleIce = async (payload = {}) => {
+      const from = payload?.from || payload?.caller;
+      const candidate = payload?.candidate;
+      if (!from || !candidate) return;
+
       const peer = peersRef.current[from];
       if (peer) {
-        peer.addIceCandidate(new RTCIceCandidate(candidate));
+        if (peer.remoteDescription) {
+          try {
+            await peer.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {
+            console.error("Error adding ice candidate:", e);
+          }
+        } else {
+          peer._pendingIce = peer._pendingIce || [];
+          peer._pendingIce.push(candidate);
+        }
       }
-    }
+    };
+
     socket.on("offer", handleOffer);
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIce);
-
 
     return () => {
       socket.off("offer", handleOffer);
@@ -347,7 +403,7 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
       socket.off("ice-candidate", handleIce);
     };
 
-  }, [markConnected, upsertPeerStream]);
+  }, [markConnected, upsertPeerStream, socket]);
 
 
   const sendAudio = async () => {
@@ -527,7 +583,8 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
     } else {
       socket.emit("call-user", {
         targetUserId: selectedUser._id,
-        roomId
+        roomId,
+        callerName: authUser?.fullName || authUser?.email || 'User'
       });
     }
   };
@@ -674,26 +731,28 @@ const VideoStream = forwardRef(({ setIncomingCall, incomingCall }, ref) => {
         )}
 
 
-<div
+        <div
           ref={videoContainerRef}
           className="rounded-2xl border border-base-300 bg-base-100 flex flex-col justify-center items-center p-6 shadow-xl mb-6"
         >
-        {/* Header */}
-        {/* <div className="mb-6 rounded-2xl border border-base-300/70 bg-base-100/90 p-4 text-center shadow-sm"> */}
-          {/* <h1 className="text-3xl font-bold mb-2">
-            <BotMessageSquare className="inline w-8 h-8 mr-2" />
-            Rapid Chat Calls
-          </h1> */}
-          <p className="text-sm mt-2 w-full text-center">
+          <div className="w-full flex justify-between items-center mb-3">
+            <button
+              onClick={() => {
+                endCall();
+                useChatStore.getState().setVideoCall(false);
+              }}
+              className="btn btn-sm btn-outline btn-error gap-2"
+            >
+              <PhoneOff className="w-4 h-4" /> Close Video
+            </button>
+            <p className="text-sm font-medium text-base-content/70">{peers.length + 1} participant{peers.length > 0 ? "s" : ""}</p>
+          </div>
+
+          <p className="text-sm mb-3 w-full text-center">
             {(Calling || connecting) && <span className="text-yellow-500 animate-pulse">{getCallStatus()}</span>}
             {!Calling && !connecting && (callActive || hasRemotePeer) && <span className="text-green-500">{getCallStatus()}</span>}
             {!Calling && !connecting && !callActive && !hasRemotePeer && <span className="text-gray-400">{getCallStatus()}</span>}
           </p>
-        {/* </div> */}
-
-        {/* Video Container */}
-        
-          <p className="mb-3 text-sm font-medium text-base-content/70">{peers.length + 1} participants</p>
           
           {/* Unified Grid for all participants */}
           <div className={`grid gap-4 w-[80%] ${

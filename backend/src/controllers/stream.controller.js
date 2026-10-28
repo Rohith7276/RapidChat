@@ -175,36 +175,45 @@ export const createStream = async (req, res) => {
         }
 
         if (type == "youtube") {
-            const transcriptResult = await supadata.transcript({
-                url: url,
-                text: false,
-                mode: 'auto', // optional: 'native', 'auto', or 'generate'
-            });
+            try {
+                const transcriptResult = await supadata.transcript({
+                    url: url,
+                    text: false,
+                    mode: 'auto',
+                });
 
-            const resolvedTranscript = await waitForTranscriptResult(transcriptResult);
-            const transcriptPayload = buildTranscriptPayload(resolvedTranscript);
+                const resolvedTranscript = await waitForTranscriptResult(transcriptResult);
+                const transcriptPayload = buildTranscriptPayload(resolvedTranscript);
 
-            data = transcriptPayload.transcriptText || resolvedTranscript.content || "";
-            req.body.transcriptSegments = transcriptPayload.transcriptSegments;
-            req.body.transcriptChunks = transcriptPayload.transcriptChunks;
+                data = transcriptPayload.transcriptText || resolvedTranscript.content || "";
+                req.body.transcriptSegments = transcriptPayload.transcriptSegments;
+                req.body.transcriptChunks = transcriptPayload.transcriptChunks;
+            } catch (transcriptErr) {
+                console.warn("YouTube transcript unavailable or failed:", transcriptErr?.message);
+                data = data || "";
+            }
         }
-        const group = groupId ? await Group.findById(groupId) : null;
+        let group = (groupId && mongoose.Types.ObjectId.isValid(groupId)) ? await Group.findById(groupId) : null;
+        let receiver = null;
 
         if (!group) {
-            groupId = ""
-            const receiver = await User.findById(recieverId);
-            recieverId = receiver?._id;
-        }
-        else {
-            groupId = group?._id
+            groupId = "";
+            receiver = (recieverId && mongoose.Types.ObjectId.isValid(recieverId)) ? await User.findById(recieverId) : null;
+            recieverId = receiver ? receiver._id : null;
+        } else {
+            groupId = String(group._id);
+            recieverId = null;
         }
 
+        if (!group && !receiver) {
+            return res.status(400).json({ message: "Recipient user or group not found" });
+        }
 
         let quizData = null;
-        console.log(type)
-        if (type == "youtube" || type == "pdf") {
-            quizData = await getResponse(
-                `
+        if ((type == "youtube" || type == "pdf") && data && data.trim().length > 50) {
+            try {
+                quizData = await getResponse(
+                    `
 Return ONLY valid JSON.
 
 Generate 10 MCQ quiz questions from this content.
@@ -231,12 +240,14 @@ Format:
 
 Content: ${data.slice(0, 5000)}
 `,
-                {
-                    max_tokens: 5000,
-                    temperature: 0.2,
-                }
-            );
-            console.log("quizData: ", quizData)
+                    {
+                        max_tokens: 5000,
+                        temperature: 0.2,
+                    }
+                );
+            } catch (quizErr) {
+                console.warn("Quiz generation skipped/failed:", quizErr?.message);
+            }
         }
 
         const stream = await Stream.create({
@@ -278,12 +289,18 @@ Content: ${data.slice(0, 5000)}
             });
         }
 
-        if (groupId) {
+        if (groupId && String(groupId).trim() !== "") {
             io.to(String(groupId)).emit("stream", stream);
         } else {
-            const receiverSocketId = getReceiverSocketId(recieverId);
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit("stream", stream);
+            if (recieverId) {
+                io.to(String(recieverId)).emit("stream", stream);
+                const receiverSocketId = getReceiverSocketId(String(recieverId));
+                if (receiverSocketId) io.to(receiverSocketId).emit("stream", stream);
+            }
+            if (userId) {
+                io.to(String(userId)).emit("stream", stream);
+                const streamerSocketId = getReceiverSocketId(String(userId));
+                if (streamerSocketId) io.to(streamerSocketId).emit("stream", stream);
             }
         }
 
@@ -317,23 +334,36 @@ export const streamControls = async (req, res) => {
     try {
         const { id: friendId, streamId, action } = req.params;
         const userId = req.user._id;
+
+        if (!friendId || !mongoose.Types.ObjectId.isValid(friendId)) {
+            return res.status(400).json({ message: "Invalid recipient ID" });
+        }
+
         let friend = await User.findById(friendId);
         if (!friend) {
-            friend = await Group.findById(friendId)
+            friend = await Group.findById(friendId);
         }
-        if (!friend) return res.status(404).json({ message: "Friend not found" });
+        if (!friend) return res.status(404).json({ message: "Recipient not found" });
+
+        if (!streamId || !mongoose.Types.ObjectId.isValid(streamId)) {
+            return res.status(400).json({ message: "Invalid stream ID" });
+        }
 
         const stream = await Stream.findById(streamId);
-        const receiverSocketId = getReceiverSocketId(friend._id);
         if (!stream) return res.status(400).json({ message: "Stream not found" });
 
-        if (!receiverSocketId) {
-            return res.status(400).json({ message: "Streamer is offline" });
+        const receiverSocketId = getReceiverSocketId(String(friend._id));
+
+        // Emit to both user ID room and direct socket ID if known
+        io.to(String(friend._id)).emit("streamControls", action, stream, String(userId));
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("streamControls", action, stream, String(userId));
         }
-        io.to(receiverSocketId).emit("streamControls", action, stream, userId);
+
         return res.status(200).json({ message: "Stream action sent" });
 
     } catch (error) {
+        console.error("Error in streamControls:", error.message);
         return res.status(500).json({ error: "Internal server error" });
     }
 }
@@ -342,14 +372,14 @@ export const getStream = async (req, res) => {
     try {
         let { id: friendId } = req.params;
         const userId = req.user._id;
-        if (!friendId) {
-            return res.status(400).json({ message: "ID parameter is required" });
+        if (!friendId || !mongoose.Types.ObjectId.isValid(friendId)) {
+            return res.status(200).json(null);
         }
         let friend = await User.findById(friendId);
         if (!friend) {
-            friend = await Group.findById(friendId)
+            friend = await Group.findById(friendId);
         }
-        if (!friend) return res.status(404).json({ message: "Friend not found" });
+        if (!friend) return res.status(200).json(null);
         const streams = await Stream.findOne(
             {
                 $and: [{
@@ -374,14 +404,14 @@ export const getAllStream = async (req, res) => {
     try {
         let { id: friendId } = req.params;
         const userId = req.user._id;
-        if (!friendId) {
-            return res.status(400).json({ message: "ID parameter is required" });
+        if (!friendId || !mongoose.Types.ObjectId.isValid(friendId)) {
+            return res.status(200).json([]);
         }
         let friend = await User.findById(friendId);
         if (!friend) {
-            friend = await Group.findById(friendId)
+            friend = await Group.findById(friendId);
         }
-        if (!friend) return res.status(404).json({ message: "Friend not found" });
+        if (!friend) return res.status(200).json([]);
         const streams = await Stream.find(
             {
                 $or: [{
@@ -456,67 +486,63 @@ export const geSpecificStream = async (req, res) => {
 
 export const endStream = async (req, res) => {
     try {
-        let { id: friendId } = req.params;
+        let { id: targetId } = req.params;
         const userId = req.user._id;
-        if (!friendId) {
-            return res.status(400).json({ message: "ID parameter is required" });
+        if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
+            return res.status(200).json({ message: "No active stream found", streams: [] });
         }
-        let friend = await User.findById(friendId);
-        if (!friend) {
-            friend = await Group.findById(friendId)
-        }
-        if (!friend) return res.status(404).json({ message: "Friend not found" });
 
-        const endedStream = await Stream.findOneAndUpdate(
-            {
-                $and: [
-                    {
-                        $or: [
-                            { $and: [{ streamerId: userId }, { receiverId: friend._id }] },
-                            { $and: [{ receiverId: userId }, { streamerId: friend._id }] },
-                            { groupId: friendId }
-                        ]
-                    },
-                    { stopTime: null }
-                ]
-            },
-            { $set: { stopTime: new Date() } },
-            { new: true }
-        );
+        // Try finding by direct streamId first, or by friend / group ID
+        let endedStream = await Stream.findOne({
+            _id: targetId,
+            stopTime: null,
+        });
 
         if (!endedStream) {
-            return res.status(404).json({ message: "No active stream found" });
+            endedStream = await Stream.findOneAndUpdate(
+                {
+                    $and: [
+                        {
+                            $or: [
+                                { $and: [{ streamerId: userId }, { receiverId: targetId }] },
+                                { $and: [{ receiverId: userId }, { streamerId: targetId }] },
+                                { groupId: targetId }
+                            ]
+                        },
+                        { stopTime: null }
+                    ]
+                },
+                { $set: { stopTime: new Date() } },
+                { new: true }
+            );
+        } else {
+            endedStream.stopTime = new Date();
+            await endedStream.save();
+        }
+
+        if (!endedStream) {
+            return res.status(200).json({ message: "No active stream found", streams: [] });
         }
 
         clearStreamContext(endedStream._id);
 
-        const streams = await Stream.find(
-            {
-                $or: [{
-                    $and: [{ streamerId: userId }, { receiverId: friend._id }]
-                }, {
-                    $and: [{ receiverId: userId }, { streamerId: friend._id }]
-                }, {
-                    groupId: friendId
-                },]
-
-            });
-
-        if (friend && friend.constructor?.modelName === "Group") {
-            io.to(String(friend._id)).emit("stream", endedStream);
+        // Notify all parties via socket
+        if (endedStream.groupId && String(endedStream.groupId).trim() !== "") {
+            io.to(String(endedStream.groupId)).emit("stream", endedStream);
         } else {
-            const receiverSocketId = getReceiverSocketId(friendId);
-            const senderSocketId = getReceiverSocketId(String(userId));
-
-            if (receiverSocketId) {
-                io.to(receiverSocketId).emit("stream", endedStream);
+            if (endedStream.receiverId) {
+                io.to(String(endedStream.receiverId)).emit("stream", endedStream);
+                const receiverSocketId = getReceiverSocketId(String(endedStream.receiverId));
+                if (receiverSocketId) io.to(receiverSocketId).emit("stream", endedStream);
             }
-            if (senderSocketId) {
-                io.to(senderSocketId).emit("stream", endedStream);
+            if (endedStream.streamerId) {
+                io.to(String(endedStream.streamerId)).emit("stream", endedStream);
+                const streamerSocketId = getReceiverSocketId(String(endedStream.streamerId));
+                if (streamerSocketId) io.to(streamerSocketId).emit("stream", endedStream);
             }
         }
 
-        return res.status(200).json(streams);
+        return res.status(200).json({ message: "Stream ended successfully", stream: endedStream });
     } catch (error) {
         console.error("Error in endStream: ", error.message);
         res.status(500).json({ error: "Internal server error" });

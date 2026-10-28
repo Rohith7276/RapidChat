@@ -29,6 +29,8 @@ const PDFViewer = ( ) => {
     const { setPdfScroll, pdfCheck, pdfScrollTop, setStreamData, setStartStreaming, endStream, streamData } = useStreamStore()
     const { authUser } = useAuthStore()
 
+    const isStreamer = Boolean(authUser?._id && (streamData?.streamerId === authUser?._id || streamData?.senderInfo?.fullName === authUser?.fullName));
+
     useEffect(() => {
         if (pdfRef.current) {
             setPdfScroll(pdfRef.current.scrollTop);
@@ -47,16 +49,14 @@ const PDFViewer = ( ) => {
 
     }, [])
 
-
-
     useEffect(() => {
-        console.log("pdfScrollTop", pdfScrollTop)
-        pdfRef.current.scrollTop = pdfScrollTop
-
-    }, [pdfScrollTop]);
-   
-
-
+        if (pdfRef.current && typeof pdfScrollTop === "number") {
+            pdfRef.current.scrollTop = pdfScrollTop;
+            if (!isStreamer && pdfScrollTop > 0) {
+                toast.success("Synced to streamer's position", { id: "seek-toast" });
+            }
+        }
+    }, [pdfScrollTop, isStreamer]);
 
     return (
         <><div className="flex  flex-col items-center justify-center w-full h-full px-2 sm:px-4 rounded-lg">
@@ -65,6 +65,11 @@ const PDFViewer = ( ) => {
                       </div>
             <div
                 ref={pdfRef}
+                onScroll={(e) => {
+                    if (isStreamer) {
+                        setPdfScroll(e.currentTarget.scrollTop);
+                    }
+                }}
                 className="h-[500px] mx-auto overflow-y-scroll w-full sm:w-[900px] flex flex-col items-center px-2 sm:px-0"
             >
                 <div className="w-full p-2" style={{ filter: `brightness(${brightness}%)` }}>
@@ -91,26 +96,34 @@ const PDFViewer = ( ) => {
                 </div>
             </div>
             <div className="flex flex-wrap justify-between w-full px-4 sm:px-8 lg:px-11 items-center mt-4 gap-2 sm:gap-4">
-                {streamData?.senderInfo?.fullName !== authUser?.fullName && (
+                {!isStreamer && (
                     <button
-                        className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
+                        className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base hover:opacity-90 transition-opacity"
                         onClick={async () => {
-                            await axiosInstance.get(
-                                `/auth/user/stream-control/${selectedUser._id}/999999/${streamData._id}`
-                            );
+                            const targetId = streamData?.streamerId || selectedUser?._id;
+                            if (!targetId || !streamData?._id) {
+                                toast.error("Stream or streamer not found");
+                                return;
+                            }
+                            toast.loading("Syncing with streamer...", { id: "seek-toast" });
+                            try {
+                                await axiosInstance.get(
+                                    `/stream/stream-control/${targetId}/999999/${streamData._id}`
+                                );
+                            } catch (err) {
+                                toast.error(err.response?.data?.message || "Failed to sync with streamer", { id: "seek-toast" });
+                            }
                         }}
                     >
                         Seek
                     </button>
                 )}
-                {streamData?.senderInfo?.fullName === authUser?.fullName && (
+                {isStreamer && (
                     <Link
-                        className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base"
+                        className="bg-base-content text-base-300 p-2 px-3 rounded-md text-sm sm:text-base hover:opacity-90 transition-opacity"
                         onClick={() => {
                             setStartStreaming(false);
-                            // setStreamData([]);
                             endStream(); 
-
                         }}
                         to='/stream'
                     >

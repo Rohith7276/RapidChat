@@ -55,11 +55,6 @@ const MessageInput = () => {
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
-  useEffect(() => {
-    if(streamData.length != 0 && streamMode){
-      
-    }
-  }, [streamData, streamMode])
   
 
   const handleSendMessage = async (e) => {

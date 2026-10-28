@@ -1,10 +1,13 @@
 export function formatMessageTime(date) {
-    return new Date(date).toLocaleTimeString("en-US", {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     });
-  }
+}
 
 export function parseTimestampToSeconds(timestamp) {
   const value = String(timestamp || "").trim();
@@ -44,4 +47,37 @@ export function formatSecondsToTimestamp(totalSeconds) {
   }
 
   return `${String(hours).padStart(2, "0")}:${paddedMinutes}:${paddedSeconds}`;
+}
+
+export function extractYouTubeId(urlOrId) {
+  if (!urlOrId || typeof urlOrId !== "string") return null;
+  const trimmed = urlOrId.trim();
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+
+  try {
+    const parsed = new URL(trimmed.startsWith("http") ? trimmed : `https://${trimmed}`);
+    if (parsed.hostname === "youtu.be") {
+      const id = parsed.pathname.slice(1).split("?")[0].split("/")[0];
+      if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+    }
+    if (parsed.hostname.includes("youtube.com")) {
+      if (parsed.pathname.startsWith("/shorts/")) {
+        const id = parsed.pathname.split("/shorts/")[1]?.split("?")[0]?.split("/")[0];
+        if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+      }
+      if (parsed.pathname.startsWith("/embed/")) {
+        const id = parsed.pathname.split("/embed/")[1]?.split("?")[0]?.split("/")[0];
+        if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+      }
+      const v = parsed.searchParams.get("v");
+      if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([a-zA-Z0-9_-]{11})/);
+  if (match && match[1]) return match[1];
+
+  return null;
 }

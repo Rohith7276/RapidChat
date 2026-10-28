@@ -92,10 +92,19 @@ const HomePage = () => {
   }, []);
 
 
+  const isStreamRoute = window.location.pathname.startsWith("/stream");
+  const isStreamVisible = streamMode || isStreamRoute;
+
+  useEffect(() => {
+    if (isStreamRoute && !streamMode) {
+      setStreamMode(true);
+    }
+  }, [isStreamRoute, streamMode, setStreamMode]);
+
   return (
     <div className="h-screen bg-base-200 flex flex-col">
       <div className="pt-20 px-4 flex-1 overflow-hidden">
-        {!streamMode ? (
+        {!isStreamVisible ? (
           // Non-stream mode: Full width chat
           <div className="flex h-full gap-0.5 justify-center">
             <div className="bg-base-100 rounded-lg shadow-lg max-w-7xl h-full w-full">
