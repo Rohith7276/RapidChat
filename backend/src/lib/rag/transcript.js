@@ -79,7 +79,11 @@ export function normalizeTranscriptSegments(rawTranscript) {
     // convert all timing values to seconds first.
     const maxStart = Math.max(...numericStarts);
     let segmentsInSeconds = normalizedSegments;
-    if (maxStart > DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS * 1000) {
+    const totalDuration = normalizedSegments.reduce((acc, seg) => acc + (Number(seg.end || seg.start) - Number(seg.start || 0)), 0);
+    const avgDuration = totalDuration / (normalizedSegments.length || 1);
+    const hasMsOffsets = normalizedSegments.some((seg) => seg.raw?.offset !== undefined && Number(seg.raw?.offset) > 1000);
+    const isMilliseconds = maxStart > 1000 && (maxStart > DEFAULT_REBASE_OFFSET_THRESHOLD_SECONDS * 1000 || avgDuration > 50 || hasMsOffsets);
+    if (isMilliseconds) {
         segmentsInSeconds = normalizedSegments.map((segment) => ({
             ...segment,
             start: Number(segment.start) / 1000,

@@ -46,7 +46,7 @@ const CreateYouTubeStream = () => {
 
     setLoading(true);
     const streamPayload = {
-      url: extractedId || videoId.trim(),
+      url: extractedId ? `https://www.youtube.com/watch?v=${extractedId}` : (videoId.trim().startsWith("http") ? videoId.trim() : `https://${videoId.trim()}`),
       title: title.trim() || "YouTube Live Stream",
       description: desc.trim() || "",
       groupId: isGroup ? selectedUser._id : null,

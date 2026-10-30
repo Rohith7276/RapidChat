@@ -11,7 +11,7 @@ import PdfParse from "pdf-parse";
 import { clearStreamContext, indexStreamKnowledgeBase, retrieveTimestampContext } from "../lib/rag/similarity.js";
 import { getStreamKnowledgeBase } from "../lib/rag/store.js";
 import { chunkTranscriptSegments, normalizeTranscriptSegments } from "../lib/rag/transcript.js";
-// import { YoutubeTranscript, YoutubeTranscriptDisabledError, YoutubeTranscriptNotAvailableError } from 'youtube-transcript-plus';
+import { fetchYouTubeTranscriptData, getCanonicalYouTubeUrl, extractYouTubeId } from "../lib/rag/youtubeTranscriptService.js";
 import {
     Supadata,
 } from '@supadata/js';
@@ -86,9 +86,31 @@ export const reindexStream = async (req, res) => {
         const stream = await Stream.findById(streamId);
         if (!stream) return res.status(404).json({ message: "Stream not found" });
 
-        const transcriptSegments = stream.streamInfo?.transcriptSegments || [];
-        const transcriptChunks = stream.streamInfo?.transcriptChunks || [];
-        const text = stream.streamInfo?.data || "";
+
+
+        let transcriptSegments = stream.streamInfo?.transcriptSegments || [];
+        let transcriptChunks = stream.streamInfo?.transcriptChunks || [];
+        let text = stream.streamInfo?.data || "";
+
+        if (stream.streamInfo?.type === "youtube" && (!text || !transcriptSegments.length)) {
+            try {
+                const fetched = await fetchYouTubeTranscriptData(stream.streamInfo?.url);
+                if (fetched?.transcriptText) {
+                    text = fetched.transcriptText;
+                    transcriptSegments = fetched.transcriptSegments;
+                    transcriptChunks = fetched.transcriptChunks;
+                    await Stream.findByIdAndUpdate(stream._id, {
+                        $set: {
+                            "streamInfo.data": text,
+                            "streamInfo.transcriptSegments": transcriptSegments,
+                            "streamInfo.transcriptChunks": transcriptChunks,
+                        }
+                    });
+                }
+            } catch (fetchErr) {
+                console.warn("reindexStream auto-fetch failed:", fetchErr?.message);
+            }
+        }
 
         const knowledgeBase = await indexStreamKnowledgeBase({
             streamId: stream._id,
@@ -176,18 +198,24 @@ export const createStream = async (req, res) => {
 
         if (type == "youtube") {
             try {
-                const transcriptResult = await supadata.transcript({
-                    url: url,
-                    text: false,
-                    mode: 'auto',
-                });
 
-                const resolvedTranscript = await waitForTranscriptResult(transcriptResult);
-                const transcriptPayload = buildTranscriptPayload(resolvedTranscript);
 
-                data = transcriptPayload.transcriptText || resolvedTranscript.content || "";
-                req.body.transcriptSegments = transcriptPayload.transcriptSegments;
-                req.body.transcriptChunks = transcriptPayload.transcriptChunks;
+
+
+
+
+                const canonicalUrl = getCanonicalYouTubeUrl(url);
+                url = canonicalUrl;
+                const transcriptPayload = await fetchYouTubeTranscriptData(canonicalUrl);
+                data = transcriptPayload.transcriptText || "";
+                req.body.transcriptSegments = transcriptPayload.transcriptSegments || [];
+                req.body.transcriptChunks = transcriptPayload.transcriptChunks || [];
+
+
+
+
+
+
             } catch (transcriptErr) {
                 console.warn("YouTube transcript unavailable or failed:", transcriptErr?.message);
                 data = data || "";

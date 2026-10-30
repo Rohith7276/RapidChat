@@ -5,7 +5,8 @@ import Stream from "../models/stream.model.js";
 import { YoutubeTranscript } from 'youtube-transcript';
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import fs from "fs";
-import { getStreamContextForQuestion } from "../lib/rag/similarity.js";
+import { getStreamContextForQuestion, indexStreamKnowledgeBase } from "../lib/rag/similarity.js";
+import { fetchYouTubeTranscriptData } from "../lib/rag/youtubeTranscriptService.js";
 // import pdfParse from "pdf-parse";
 
 const AI_MEMORY_TRIGGER_TURNS = 12;
@@ -299,6 +300,59 @@ export const streamAi = async (req, res) => {
       }).sort({ createdAt: -1 });
     }
 
+    if (!activeStream && groupId) {
+      activeStream = await Stream.findOne({ groupId }).sort({ createdAt: -1 });
+    }
+
+    if (!activeStream && receiverId) {
+      activeStream = await Stream.findOne({
+        $or: [
+          { receiverId, streamerId: req.user._id },
+          { streamerId: receiverId, receiverId: req.user._id },
+        ],
+      }).sort({ createdAt: -1 });
+    }
+
+    if (
+      activeStream?.streamInfo?.type === "youtube" &&
+      (!activeStream.streamInfo?.data || !activeStream.streamInfo?.transcriptSegments?.length)
+    ) {
+      try {
+        const streamUrl = activeStream.streamInfo?.url;
+        if (streamUrl) {
+          const fetchedPayload = await fetchYouTubeTranscriptData(streamUrl);
+          if (fetchedPayload?.transcriptText) {
+            activeStream.streamInfo.data = fetchedPayload.transcriptText;
+            activeStream.streamInfo.transcriptSegments = fetchedPayload.transcriptSegments;
+            activeStream.streamInfo.transcriptChunks = fetchedPayload.transcriptChunks;
+
+            await Stream.findByIdAndUpdate(activeStream._id, {
+              $set: {
+                "streamInfo.data": fetchedPayload.transcriptText,
+                "streamInfo.transcriptSegments": fetchedPayload.transcriptSegments,
+                "streamInfo.transcriptChunks": fetchedPayload.transcriptChunks,
+              },
+            });
+
+            await indexStreamKnowledgeBase({
+              streamId: activeStream._id,
+              text: fetchedPayload.transcriptText,
+              transcriptSegments: fetchedPayload.transcriptSegments,
+              chunks: fetchedPayload.transcriptChunks,
+              metadata: {
+                type: activeStream.streamInfo.type,
+                title: activeStream.streamInfo.title,
+                url: activeStream.streamInfo.url,
+                source: "on-demand-stream-ai-recovery",
+              },
+            });
+          }
+        }
+      } catch (recoveryErr) {
+        console.warn("Failed on-demand transcript recovery in streamAi:", recoveryErr?.message);
+      }
+    }
+
     // Resolve the correct stream first so retrieval searches the right in-memory index.
     const streamContext = await getStreamContextForQuestion({
       streamId: activeStream?._id || streamId || `${req.user._id}:${receiverId || groupId || "stream"}`,
@@ -333,6 +387,7 @@ export const streamAi = async (req, res) => {
         `If exact moment coverage is limited, use the nearest relevant moment confidently without exposing retrieval limitations.`,
         `If information is truly unavailable, say you do not have enough information from this video yet.`,
         `Stream title: ${activeStream?.streamInfo?.title || "Untitled stream"}`,
+        `Stream description: ${activeStream?.streamInfo?.description || "No description provided"}`,
         retrievalLabel,
         `Video context:\n${retrievedChunksText}`,
       ].join("\n\n"),

@@ -174,13 +174,21 @@ export async function retrieveRelevantChunks({ streamId, question, topK = 4 }) {
     const questionEmbedding = await createEmbedding(question);
 
     // Score every chunk against the question and keep only the top matches.
-    return knowledgeBase.chunks
+    const scored = knowledgeBase.chunks
         .map((chunk) => ({
             ...chunk,
             score: cosineSimilarity(questionEmbedding, chunk.embedding),
         }))
-        .sort((leftChunk, rightChunk) => rightChunk.score - leftChunk.score)
-        .slice(0, Math.max(1, Number(topK || 4)));
+        .sort((leftChunk, rightChunk) => rightChunk.score - leftChunk.score);
+
+    const topMatches = scored.slice(0, Math.max(1, Number(topK || 4)));
+
+    const isBroadQuery = /\b(what('s|s)?\s*(going on|about)|summary|summarize|overview|explain|topic)\b/i.test(question);
+    if (isBroadQuery && knowledgeBase.chunks[0] && !topMatches.some(c => c.index === 0)) {
+        topMatches.unshift({ ...knowledgeBase.chunks[0], score: 1.0 });
+    }
+
+    return topMatches.sort((a, b) => (Number(a.start ?? a.index ?? 0) - Number(b.start ?? b.index ?? 0)));
 }
 
 export function retrieveChunksByTimestamp({ streamId, seconds, topK = 3 }) {

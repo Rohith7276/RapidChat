@@ -131,15 +131,20 @@ export const useChatStore = create((set, get) => ({
 
     try {
       let res = {};
+      const streamData = useStreamStore.getState().streamData;
+      const basePayload = {
+        ...messageData,
+        streamId: streamData?._id,
+        data: streamData?.streamInfo?.data?.slice(0, 5800),
+      };
+
       if (selectedUser.fullName !== undefined) {
-
-        const streamData = useStreamStore.getState().streamData
-        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, streamId: streamData?._id, data: streamData?.streamInfo?.data?.slice(0, 5800), receiverId: selectedUser._id, groupId: null });
+        res = await axiosInstance.post(`/stream/stream-ai`, { ...basePayload, receiverId: selectedUser._id, groupId: null });
+      } else {
+        res = await axiosInstance.post(`/stream/stream-ai`, { ...basePayload, receiverId: null, groupId: selectedUser._id });
       }
-      else
-        res = await axiosInstance.post(`/stream/stream-ai`, { ...messageData, receiverId: null, groupId: selectedUser._id });
 
-      const newMes = { ...res.data, _id: "1", senderId: "67af8f1706ba3b36e9679f9d", senderInfo: { fullName: "Rapid AI", profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg" } };
+      const newMes = { ...res.data, _id: res.data?._id || Date.now().toString(), senderId: res.data?.senderId || "67af8f1706ba3b36e9679f9d", senderInfo: res.data?.senderInfo || { fullName: "Rapid AI", profilePic: "https://imgcdn.stablediffusionweb.com/2024/10/20/a11e6805-65f5-4402-bef9-891ab7347104.jpg" } };
       set({ messages: [...messages, newMes] });
 
     } catch (error) {

@@ -72,14 +72,13 @@ const MessageInput = () => {
         image: x,
       });
       if (aiMes.trim() !== "") {
-        if (streamMode ==false) {
-
+        const isStreaming = Boolean(streamMode || (streamData && !streamData.stopTime));
+        if (!isStreaming) {
           await getAiMessage({
             input: aiMes,
             user: authUser.fullName
           });
-        }
-        else {
+        } else {
           await getStreamAiMessage({
             input: aiMes,
             user: authUser.fullName, 
